@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
-import { useCartStore } from '../store/cartStore';
-import { CartItem, Product } from '../types';
+import { useCallback } from "react";
+import { useCartStore } from "../store/cartStore";
+import { CartItem, Product } from "../types";
 
 export const useCart = () => {
   const {
@@ -16,26 +16,27 @@ export const useCart = () => {
 
   const subtotal = items.reduce(
     (sum: number, item: CartItem) => sum + item.price * item.quantity,
-    0
+    0,
   );
 
-  const discountAmount = discount?.type === 'percent'
-    ? (subtotal * discount.value) / 100
-    : (discount?.value ?? 0);
+  const discountAmount =
+    discount?.type === "percent"
+      ? (subtotal * discount.value) / 100
+      : (discount?.value ?? 0);
 
   const taxAmount = ((subtotal - discountAmount) * taxRate) / 100;
   const total = subtotal - discountAmount + taxAmount;
 
   const itemCount = items.reduce(
     (sum: number, item: CartItem) => sum + item.quantity,
-    0
+    0,
   );
 
   const addProduct = useCallback(
     (product: Product, quantity = 1) => {
       addItem({ ...product, quantity });
     },
-    [addItem]
+    [addItem],
   );
 
   const incrementItem = useCallback(
@@ -43,7 +44,7 @@ export const useCart = () => {
       const item = items.find((i: CartItem) => i.id === productId);
       if (item) updateQuantity(productId, item.quantity + 1);
     },
-    [items, updateQuantity]
+    [items, updateQuantity],
   );
 
   const decrementItem = useCallback(
@@ -56,18 +57,18 @@ export const useCart = () => {
         updateQuantity(productId, item.quantity - 1);
       }
     },
-    [items, removeItem, updateQuantity]
+    [items, removeItem, updateQuantity],
   );
 
   const isInCart = useCallback(
     (productId: string) => items.some((i: CartItem) => i.id === productId),
-    [items]
+    [items],
   );
 
   const getItemQuantity = useCallback(
     (productId: string): number =>
       items.find((i: CartItem) => i.id === productId)?.quantity ?? 0,
-    [items]
+    [items],
   );
 
   return {
