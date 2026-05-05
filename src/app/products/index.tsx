@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,10 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  Image,
-} from 'react-native';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Product = {
   id: string;
@@ -20,24 +21,25 @@ type Product = {
 };
 
 const MOCK_PRODUCTS: Product[] = [
-  { id: '1', name: 'Espresso', price: 3.5, category: 'Beverages', stock: 100 },
-  { id: '2', name: 'Latte', price: 4.5, category: 'Beverages', stock: 80 },
-  { id: '3', name: 'Croissant', price: 2.75, category: 'Bakery', stock: 30 },
-  { id: '4', name: 'Sandwich', price: 6.0, category: 'Food', stock: 20 },
-  { id: '5', name: 'Cappuccino', price: 4.0, category: 'Beverages', stock: 90 },
-  { id: '6', name: 'Muffin', price: 2.5, category: 'Bakery', stock: 25 },
+  { id: "1", name: "Espresso", price: 3.5, category: "Beverages", stock: 100 },
+  { id: "2", name: "Latte", price: 4.5, category: "Beverages", stock: 80 },
+  { id: "3", name: "Croissant", price: 2.75, category: "Bakery", stock: 30 },
+  { id: "4", name: "Sandwich", price: 6.0, category: "Food", stock: 20 },
+  { id: "5", name: "Cappuccino", price: 4.0, category: "Beverages", stock: 90 },
+  { id: "6", name: "Muffin", price: 2.5, category: "Bakery", stock: 25 },
 ];
 
-const CATEGORIES = ['All', 'Beverages', 'Bakery', 'Food'];
+const CATEGORIES = ["All", "Beverages", "Bakery", "Food"];
 
 export default function ProductsScreen() {
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const filtered = MOCK_PRODUCTS.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory =
-      selectedCategory === 'All' || p.category === selectedCategory;
+      selectedCategory === "All" || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -58,10 +60,19 @@ export default function ProductsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Products</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chevron-back" size={20} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Products</Text>
+        </View>
         <TouchableOpacity style={styles.addButton}>
           <Text style={styles.addButtonText}>+ Add</Text>
         </TouchableOpacity>
@@ -121,43 +132,57 @@ export default function ProductsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  backButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
   },
   title: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
   },
   addButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: "#4F46E5",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
   },
   addButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: "#FFFFFF",
+    fontWeight: "600",
     fontSize: 14,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     margin: 16,
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
   },
   searchIcon: {
     fontSize: 16,
@@ -167,10 +192,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     fontSize: 15,
-    color: '#111827',
+    color: "#111827",
   },
   categoryRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 16,
     marginBottom: 12,
     gap: 8,
@@ -179,18 +204,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
   },
   categoryChipActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: "#4F46E5",
   },
   categoryChipText: {
     fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: "#6B7280",
+    fontWeight: "500",
   },
   categoryChipTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   list: {
     paddingHorizontal: 16,
@@ -198,12 +223,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -213,9 +238,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 10,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   imageEmoji: {
@@ -226,35 +251,35 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     marginBottom: 2,
   },
   productCategory: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 6,
   },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   productPrice: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#4F46E5',
+    fontWeight: "700",
+    color: "#4F46E5",
   },
   productStock: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 60,
   },
   emptyText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
 });
