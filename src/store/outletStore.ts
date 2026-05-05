@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { Outlet } from "../services/outletService";
+import { secureStateStorage } from "./persistStorage";
 
 export interface OutletState {
   selectedOutlet: Outlet | null;
@@ -29,6 +30,7 @@ export const useOutletStore = create<OutletState>()(
     }),
     {
       name: "pos-outlet-storage",
+      storage: createJSONStorage(() => secureStateStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

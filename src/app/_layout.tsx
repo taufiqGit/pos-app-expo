@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { authStorage } from "../services/authStorage";
 import { apiEvents } from "../services/apiEvents";
+import { authStorage } from "../services/authStorage";
 import { useOutletStore } from "../store/outletStore";
 
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const [isReady, setIsReady] = useState(false);
+  const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
   const { selectedOutlet, hasHydrated } = useOutletStore();
 
   const checkAuth = async () => {
@@ -24,6 +25,20 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    // Prevent infinite loader if persisted store hydration does not finish.
+    const timeout = setTimeout(() => {
+      setHydrationTimedOut(true);
+    }, 2000);
+
+    if (hasHydrated) {
+      clearTimeout(timeout);
+      setHydrationTimedOut(false);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [hasHydrated]);
+
+  useEffect(() => {
     const unsubscribe = apiEvents.on("unauthorized", async () => {
       await authStorage.clearTokens();
       router.replace("/(auth)/login");
@@ -33,7 +48,7 @@ export default function RootLayout() {
   }, [router]);
 
   useEffect(() => {
-    if (!isReady || !hasHydrated) return;
+    if (!isReady || (!hasHydrated && !hydrationTimedOut)) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inSelectOutlet = segments[0] === "select-outlet";
@@ -59,12 +74,12 @@ export default function RootLayout() {
         router.replace("/(tabs)/kasir");
       }
     })();
-  }, [isReady, hasHydrated, segments, router, selectedOutlet]);
+  }, [isReady, hasHydrated, hydrationTimedOut, segments, router, selectedOutlet]);
 
-  if (!isReady || !hasHydrated) {
+  if (!isReady || (!hasHydrated && !hydrationTimedOut)) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color="#ed0b0bff" />
       </View>
     );
   }

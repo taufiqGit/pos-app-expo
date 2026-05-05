@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { secureStateStorage } from './persistStorage';
 
 export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'TRY' | 'JPY' | 'AUD' | 'CAD';
 
@@ -191,6 +192,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'pos-settings-storage',
+      storage: createJSONStorage(() => secureStateStorage),
     },
   ),
 );
