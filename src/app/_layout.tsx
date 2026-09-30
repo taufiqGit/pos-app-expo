@@ -71,7 +71,7 @@ export default function RootLayout() {
       }
 
       if (inAuthGroup || inSelectOutlet) {
-        router.replace("/(tabs)/kasir");
+        router.replace("/(tabs)/cashier");
       }
     })();
   }, [isReady, hasHydrated, hydrationTimedOut, segments, router, selectedOutlet]);

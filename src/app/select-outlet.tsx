@@ -57,7 +57,7 @@ export default function SelectOutletScreen() {
       return;
     }
     setSelectedOutlet(selected);
-    router.replace("/(tabs)/kasir");
+    router.replace("/(tabs)/cashier");
   };
 
   return (

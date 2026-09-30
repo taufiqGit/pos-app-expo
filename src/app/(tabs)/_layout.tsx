@@ -1,11 +1,12 @@
-import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
 import {
-  View,
+  GestureResponderEvent,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  GestureResponderEvent,
+  View,
 } from "react-native";
 
 export default function TabsLayout() {
@@ -29,7 +30,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="riwayat-transaksi"
+        name="transaction-history"
         options={{
           title: "Riwayat",
           tabBarIcon: ({ color, size }) => (
@@ -38,7 +39,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="pesanan-tersimpan"
+        name="saved-orders"
         options={{
           title: "Tersimpan",
           tabBarIcon: ({ color, size }) => (
@@ -47,7 +48,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="kasir"
+        name="cashier"
         options={{
           title: "Kasir",
           tabBarButton: (props) => {
@@ -66,21 +67,21 @@ export default function TabsLayout() {
                 accessibilityState={props.accessibilityState}
                 accessibilityLabel={props.accessibilityLabel}
                 testID={props.testID}
-                style={[styles.kasirButtonContainer, props.style]}
+                style={[styles.cashierButtonContainer, props.style]}
                 activeOpacity={0.9}
               >
                 <View
                   style={[
-                    styles.kasirButton,
-                    isFocused && styles.kasirButtonActive,
+                    styles.cashierButton,
+                    isFocused && styles.cashierButtonActive,
                   ]}
                 >
                   <Ionicons name="cart-outline" size={26} color="#FFFFFF" />
                 </View>
                 <Text
                   style={[
-                    styles.kasirLabel,
-                    isFocused && styles.kasirLabelActive,
+                    styles.cashierLabel,
+                    isFocused && styles.cashierLabelActive,
                   ]}
                 >
                   Kasir
@@ -91,7 +92,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="riwayat-shift"
+        name="shift-history"
         options={{
           title: "Shift",
           tabBarIcon: ({ color, size }) => (
@@ -100,7 +101,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="setting"
+        name="settings"
         options={{
           title: "Setting",
           tabBarIcon: ({ color, size }) => (
@@ -113,12 +114,12 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  kasirButtonContainer: {
+  cashierButtonContainer: {
     alignItems: "center",
     justifyContent: "center",
     top: -12,
   },
-  kasirButton: {
+  cashierButton: {
     width: 54,
     height: 54,
     borderRadius: 27,
@@ -131,16 +132,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  kasirButtonActive: {
+  cashierButtonActive: {
     backgroundColor: "#6366f1",
   },
-  kasirLabel: {
+  cashierLabel: {
     marginTop: 4,
     fontSize: 10,
     fontWeight: "600",
     color: "#94a3b8",
   },
-  kasirLabelActive: {
+  cashierLabelActive: {
     color: "#c7d2fe",
   },
 });

@@ -5,8 +5,8 @@ import { CartItem, Product } from "../types";
 export const useCart = () => {
   const {
     items,
-    discount,
-    taxRate,
+    discountAmount,
+    discountType,
     addItem,
     removeItem,
     updateQuantity,
@@ -19,13 +19,18 @@ export const useCart = () => {
     0,
   );
 
-  const discountAmount =
-    discount?.type === "percent"
-      ? (subtotal * discount.value) / 100
-      : (discount?.value ?? 0);
+  const discountTotal =
+    discountType === "percent"
+      ? (subtotal * discountAmount) / 100
+      : discountAmount;
 
-  const taxAmount = ((subtotal - discountAmount) * taxRate) / 100;
-  const total = subtotal - discountAmount + taxAmount;
+  const taxAmount = items.reduce(
+    (sum: number, item: CartItem) =>
+      sum + item.price * item.quantity * ((item.tax ?? 0) / 100),
+    0,
+  );
+
+  const total = subtotal - discountTotal + taxAmount;
 
   const itemCount = items.reduce(
     (sum: number, item: CartItem) => sum + item.quantity,
@@ -34,7 +39,7 @@ export const useCart = () => {
 
   const addProduct = useCallback(
     (product: Product, quantity = 1) => {
-      addItem({ ...product, quantity });
+      addItem(product, quantity);
     },
     [addItem],
   );
@@ -74,14 +79,13 @@ export const useCart = () => {
   return {
     // State
     items,
-    discount,
-    taxRate,
+    discount: { type: discountType, value: discountAmount },
     itemCount,
     isEmpty: items.length === 0,
 
     // Totals
     subtotal,
-    discountAmount,
+    discountAmount: discountTotal,
     taxAmount,
     total,
 

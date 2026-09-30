@@ -1,32 +1,26 @@
+import { Ionicons } from "@expo/vector-icons";
+import { usePathname, useRouter } from "expo-router";
 import React from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { useRouter, usePathname } from "expo-router";
-import {
-  Home,
-  ShoppingCart,
-  Package,
-  BarChart2,
-  Settings,
-} from "lucide-react-native";
 
 type Tab = {
   label: string;
-  icon: React.FC<{ size: number; color: string }>;
+  icon: keyof typeof Ionicons.glyphMap;
   route: string;
 };
 
 const TABS: Tab[] = [
-  { label: "Home", icon: Home, route: "/(tabs)" },
-  { label: "POS", icon: ShoppingCart, route: "/(tabs)/pos" },
-  { label: "Products", icon: Package, route: "/(tabs)/products" },
-  { label: "Reports", icon: BarChart2, route: "/(tabs)/reports" },
-  { label: "Settings", icon: Settings, route: "/(tabs)/settings" },
+  { label: "Home", icon: "home-outline", route: "/(tabs)" },
+  { label: "POS", icon: "cart-outline", route: "/pos" },
+  { label: "Products", icon: "cube-outline", route: "/products" },
+  { label: "Reports", icon: "bar-chart-outline", route: "/reports" },
+  { label: "Settings", icon: "settings-outline", route: "/(tabs)/settings" },
 ];
 
 const ACTIVE_COLOR = "#6C63FF";
@@ -41,7 +35,7 @@ const BottomBar: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {TABS.map(({ label, icon: Icon, route }) => {
+      {TABS.map(({ label, icon, route }) => {
         const active = isActive(route);
         return (
           <TouchableOpacity
@@ -53,7 +47,7 @@ const BottomBar: React.FC = () => {
             accessibilityLabel={label}
             accessibilityState={{ selected: active }}
           >
-            <Icon size={22} color={active ? ACTIVE_COLOR : INACTIVE_COLOR} />
+            <Ionicons name={icon} size={22} color={active ? ACTIVE_COLOR : INACTIVE_COLOR} />
             <Text style={[styles.label, active && styles.labelActive]}>
               {label}
             </Text>

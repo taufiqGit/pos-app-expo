@@ -55,7 +55,7 @@ const STATUS_LABEL: Record<SavedOrder["status"], string> = {
   hold: "Hold",
 };
 
-export default function PesananTersimpanScreen() {
+export default function SavedOrdersScreen() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "hold">(
     "all",

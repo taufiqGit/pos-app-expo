@@ -56,7 +56,7 @@ const MOCK_TRANSACTIONS: Transaction[] = [
 const FILTERS = ["Semua", "Paid", "Refunded"] as const;
 type FilterType = (typeof FILTERS)[number];
 
-export default function RiwayatTransaksiScreen() {
+export default function TransactionHistoryScreen() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("Semua");
 

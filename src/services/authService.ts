@@ -4,9 +4,9 @@
  * Handles login, logout, PIN auth, and session management.
  */
 
+import { User } from "../types/user";
 import { api } from "./api";
 import { authStorage } from "./authStorage";
-import { User } from "../types/user";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +23,9 @@ export interface PinCredentials {
 
 export interface AuthSession {
   user: User;
-  token: string;
+  access_token: string;
+  refresh_token?: string;
+  token?: string;
 }
 
 // ─── Login / logout ───────────────────────────────────────────────────────────
@@ -31,26 +33,24 @@ export interface AuthSession {
 export async function login(
   credentials: LoginCredentials,
 ): Promise<AuthSession> {
-  try {
-    const { data } = await api.post<AuthSession>(
-      "/api/auth/login",
-      credentials,
-    );
-    console.log(data, "ini");
-    await authStorage.setTokens(data.access_token, data.access_token);
+  const { data } = await api.post<AuthSession>(
+    "/api/auth/login",
+    credentials,
+  );
+  await authStorage.setTokens(
+    data.access_token,
+    data.refresh_token ?? data.access_token,
+  );
 
-    return data;
-  } catch (error) {
-    console.log(error, "error nihh");
-    // throw error;
-  }
+  return data;
 }
 
 export async function loginWithPin(
   credentials: PinCredentials,
 ): Promise<AuthSession> {
   const { data } = await api.post<AuthSession>("/api/auth/pin", credentials);
-  await authStorage.setTokens(data.token, data.token);
+  const token = data.access_token ?? data.token ?? "";
+  await authStorage.setTokens(token, data.refresh_token ?? token);
   return data;
 }
 

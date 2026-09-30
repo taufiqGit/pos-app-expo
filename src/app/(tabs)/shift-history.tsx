@@ -36,7 +36,7 @@ const shifts = [
   },
 ];
 
-export default function RiwayatShiftScreen() {
+export default function ShiftHistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView

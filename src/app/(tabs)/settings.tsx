@@ -1,16 +1,15 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { authService } from "../../services/authService";
-
 type MenuItem = {
   id: string;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
-  route: string;
+  route: Href;
 };
 
 const MENU_ITEMS: MenuItem[] = [
@@ -19,18 +18,18 @@ const MENU_ITEMS: MenuItem[] = [
     title: "Manajemen Printer",
     subtitle: "Atur printer dan auto print",
     icon: "print-outline",
-    route: "/setting/printer-management",
+    route: "/settings/printer-management",
   },
   {
     id: "profile",
     title: "Profile",
     subtitle: "Informasi akun dan preferensi",
     icon: "person-circle-outline",
-    route: "/setting/profile",
+    route: "/settings/profile",
   },
 ];
 
-export default function SettingScreen() {
+export default function SettingsScreen() {
   const router = useRouter();
 
   const handleLogout = async () => {

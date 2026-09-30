@@ -23,7 +23,7 @@ const QUICK_ITEMS = [
   { id: "4", name: "Croissant", price: 25000 },
 ];
 
-export default function KasirScreen() {
+export default function CashierScreen() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
 
