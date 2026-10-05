@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authService } from "../../services/authService";
@@ -37,6 +38,7 @@ export default function LoginScreen() {
       await authService.login({
         identifier: trimmedIdentifier,
         password,
+        device_name: Constants.deviceName ?? undefined,
       });
       router.replace("/select-outlet");
     } catch (error: any) {

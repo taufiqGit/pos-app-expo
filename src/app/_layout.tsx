@@ -1,20 +1,36 @@
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Slot, usePathname, useRouter, useSegments } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { apiEvents } from "../services/apiEvents";
+import { refreshTokens } from "../services/api";
 import { authStorage } from "../services/authStorage";
 import { useOutletStore } from "../store/outletStore";
 
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   const [isReady, setIsReady] = useState(false);
   const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
   const { selectedOutlet, hasHydrated } = useOutletStore();
 
-  const checkAuth = async () => {
-    const token = await authStorage.getAccessToken();
-    return Boolean(token);
+  const checkAuth = async (): Promise<boolean> => {
+    const accessToken = await authStorage.getAccessToken();
+    if (accessToken) return true;
+
+    // Access token hilang/kadaluarsa — coba perpanjang sesi via refresh token
+    const refreshToken = await authStorage.getRefreshToken();
+    if (!refreshToken) return false;
+
+    try {
+      await refreshTokens();
+      console.log("refreshTokens success");
+      return Boolean(await authStorage.getAccessToken());
+    } catch {
+      console.log("refreshTokens failed");
+      return false;
+      return false;
+    }
   };
 
   useEffect(() => {
@@ -52,6 +68,8 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const inSelectOutlet = segments[0] === "select-outlet";
+    // Route "/" (index) hanya layar sementara — wajib di-redirect ke tujuan akhir
+    const isIndexRoute = pathname === "/";
 
     (async () => {
       const latestAuth = await checkAuth();
@@ -70,11 +88,11 @@ export default function RootLayout() {
         return;
       }
 
-      if (inAuthGroup || inSelectOutlet) {
+      if (inAuthGroup || inSelectOutlet || isIndexRoute) {
         router.replace("/(tabs)/cashier");
       }
     })();
-  }, [isReady, hasHydrated, hydrationTimedOut, segments, router, selectedOutlet]);
+  }, [isReady, hasHydrated, hydrationTimedOut, segments, pathname, router, selectedOutlet]);
 
   if (!isReady || (!hasHydrated && !hydrationTimedOut)) {
     return (

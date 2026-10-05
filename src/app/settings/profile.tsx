@@ -1,11 +1,41 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { authService } from "../../services/authService";
+import { UserAccess } from "../../types/user";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const [user, setUser] = useState<UserAccess | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadUser = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const data = await authService.getUserAccess();
+      setUser(data);
+    } catch (error: any) {
+      setErrorMessage(
+        error?.message ?? "Gagal memuat profil. Silakan coba lagi.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -21,14 +51,40 @@ export default function ProfileScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={28} color="#4F46E5" />
+      {isLoading ? (
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
         </View>
-        <Text style={styles.name}>Nama Pengguna</Text>
-        <Text style={styles.meta}>user@email.com</Text>
-        <Text style={styles.meta}>Role: Admin</Text>
-      </View>
+      ) : errorMessage ? (
+        <View style={styles.stateContainer}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={loadUser}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.card}>
+          <View style={styles.avatar}>
+            <Ionicons name="person" size={28} color="#4F46E5" />
+          </View>
+          <Text style={styles.name}>{user?.username}</Text>
+          <Text style={styles.meta}>{user?.email}</Text>
+          <Text style={styles.meta}>Role: {user?.role}</Text>
+          {user?.phone ? <Text style={styles.meta}>{user.phone}</Text> : null}
+          <View style={styles.permissionsContainer}>
+            <Text style={styles.permissionsTitle}>
+              Hak Akses ({user?.permissions.length ?? 0})
+            </Text>
+            <Text style={styles.permissionsList}>
+              {user?.permissions.join(", ")}
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -94,5 +150,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     marginTop: 4,
+  },
+  stateContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#DC2626",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  permissionsContainer: {
+    marginTop: 16,
+    alignSelf: "stretch",
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    paddingTop: 12,
+  },
+  permissionsTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 4,
+  },
+  permissionsList: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
   },
 });

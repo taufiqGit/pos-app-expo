@@ -56,12 +56,10 @@ const apiClient: AxiosInstance = axios.create({
 // ─── Request interceptor — inject auth token ──────────────────────────────────
 
 const AUTH_FREE_PATHS = [
-  "/api/login",
   "/api/auth/login",
-  "/api/pin",
-  "/api/auth/pin",
-  "/api/register",
+  "/api/auth/login-mobile",
   "/api/auth/register",
+  "/api/auth/refresh",
 ];
 
 apiClient.interceptors.request.use(
@@ -83,23 +81,69 @@ apiClient.interceptors.request.use(
 
 // ─── Response interceptor — refresh token on 401 ─────────────────────────────
 
-const ENABLE_REFRESH_TOKEN = false;
+export interface RefreshResult {
+  accessToken: string;
+  refreshToken: string;
+}
 
-let isRefreshing = false;
-let failedQueue: {
-  resolve: (token: string) => void;
-  reject: (err: unknown) => void;
-}[] = [];
+/**
+ * POST /api/auth/refresh
+ * Backend membaca refresh token dari cookie `refresh_token` (bukan body) dan
+ * mengirim refresh token baru lewat header `Set-Cookie`, jadi kita harus:
+ * 1. Kirim token tersimpan sebagai header Cookie secara manual.
+ * 2. Parse `Set-Cookie` dari response untuk mendapat refresh token baru.
+ */
+export async function performRefresh(): Promise<RefreshResult> {
+  const storedRefreshToken = await authStorage.getRefreshToken();
+  if (!storedRefreshToken) {
+    throw new Error("Missing refresh token");
+  }
 
-function processQueue(error: unknown, token: string | null) {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token!);
-    }
-  });
-  failedQueue = [];
+  const response = await axios.post(
+    `${BASE_URL}/api/auth/refresh`,
+    {},
+    {
+      headers: { Cookie: `refresh_token=${storedRefreshToken}` },
+      withCredentials: true,
+      timeout: TIMEOUT_MS,
+    },
+  );
+
+  const payload = response.data?.data ?? {};
+  const accessToken: string | undefined = payload.access_token;
+  if (!accessToken) {
+    throw new Error("Refresh failed: access token missing");
+  }
+
+  const setCookie: string | string[] = response.headers?.["set-cookie"] ?? [];
+  const cookieHeader = Array.isArray(setCookie) ? setCookie.join("; ") : setCookie;
+  const matched = /(?:^|;\s*)refresh_token=([^;]+)/.exec(cookieHeader)?.[1];
+  const refreshToken = matched
+    ? (() => {
+        try {
+          return decodeURIComponent(matched);
+        } catch {
+          return matched;
+        }
+      })()
+    : storedRefreshToken;
+
+  await authStorage.setTokens(accessToken, refreshToken);
+  return { accessToken, refreshToken };
+}
+
+let refreshPromise: Promise<RefreshResult> | null = null;
+
+/**
+ * Refresh token sekali saja (dedup) walau dipanggil paralel dari banyak request.
+ */
+export function refreshTokens(): Promise<RefreshResult> {
+  if (!refreshPromise) {
+    refreshPromise = performRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 apiClient.interceptors.response.use(
@@ -109,58 +153,25 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (!ENABLE_REFRESH_TOKEN) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !AUTH_FREE_PATHS.some((path) => (originalRequest.url ?? "").includes(path))
+    ) {
+      originalRequest._retry = true;
+
+      try {
+        const { accessToken } = await refreshTokens();
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${accessToken}`,
+        };
+        return apiClient(originalRequest);
+      } catch {
+        // Refresh gagal — bersihkan sesi dan biarkan app shell redirect ke login
         await authStorage.clearTokens();
         apiEvents.emit("unauthorized");
         return Promise.reject(normaliseError(error));
-      }
-
-      if (isRefreshing) {
-        // Queue the request until the token refresh finishes
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: `Bearer ${token}`,
-          };
-          return apiClient(originalRequest);
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = await authStorage.getRefreshToken();
-        if (!refreshToken) {
-          throw new Error("Missing refresh token");
-        }
-        const { data } = await axios.post<{ accessToken: string }>(
-          `${BASE_URL}/auth/refresh`,
-          { refreshToken },
-        );
-
-        const newToken = data.accessToken;
-        await authStorage.setTokens(newToken, refreshToken);
-        processQueue(null, newToken);
-
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          Authorization: `Bearer ${newToken}`,
-        };
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        // Clear tokens and redirect to login
-        await authStorage.clearTokens();
-        // Emit an event so the app shell can navigate to login
-        // (avoids circular dependency with navigation)
-        apiEvents.emit("unauthorized");
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

@@ -4,7 +4,7 @@
  * Handles login, logout, PIN auth, and session management.
  */
 
-import { User } from "../types/user";
+import { User, UserAccess } from "../types/user";
 import { api } from "./api";
 import { authStorage } from "./authStorage";
 
@@ -13,19 +13,16 @@ import { authStorage } from "./authStorage";
 export interface LoginCredentials {
   identifier: string;
   password: string;
-  storeId?: string;
+  device_name?: string;
 }
 
-export interface PinCredentials {
-  userId: string;
-  pin: string; // 4–6 digit PIN for quick cashier switch
-}
-
+/** Sesuai models.AuthResponseMobile di backend (endpoint /api/auth/login-mobile) */
 export interface AuthSession {
   user: User;
   access_token: string;
-  refresh_token?: string;
-  token?: string;
+  expire_time: string;
+  refresh_token: string;
+  refresh_expires_at: string;
 }
 
 // ─── Login / logout ───────────────────────────────────────────────────────────
@@ -33,45 +30,43 @@ export interface AuthSession {
 export async function login(
   credentials: LoginCredentials,
 ): Promise<AuthSession> {
+  // Endpoint khusus mobile: refresh token dikirim di response body,
+  // bukan lewat HttpOnly cookie seperti versi backoffice.
   const { data } = await api.post<AuthSession>(
-    "/api/auth/login",
+    "/api/auth/login-mobile",
     credentials,
   );
-  await authStorage.setTokens(
-    data.access_token,
-    data.refresh_token ?? data.access_token,
-  );
+  await authStorage.setTokens(data.access_token, data.refresh_token);
 
-  return data;
-}
-
-export async function loginWithPin(
-  credentials: PinCredentials,
-): Promise<AuthSession> {
-  const { data } = await api.post<AuthSession>("/api/auth/pin", credentials);
-  const token = data.access_token ?? data.token ?? "";
-  await authStorage.setTokens(token, data.refresh_token ?? token);
   return data;
 }
 
 export async function logout(): Promise<void> {
+  const refreshToken = await authStorage.getRefreshToken();
   try {
-    await api.post("/api/auth/logout");
+    // Backend membaca refresh token dari cookie untuk revoke di server
+    await api.post("/api/auth/logout", undefined, {
+      headers: refreshToken ? { Cookie: `refresh_token=${refreshToken}` } : {},
+      withCredentials: true,
+    });
   } finally {
     await authStorage.clearTokens();
   }
 }
 
-export async function getCurrentUser(): Promise<User> {
-  const { data } = await api.get<User>("/api/auth/me");
+/**
+ * GET /api/auth/access (protected)
+ * Mengembalikan current user beserta daftar permissions-nya.
+ */
+export async function getUserAccess(): Promise<UserAccess> {
+  const { data } = await api.get<UserAccess>("/api/auth/access");
   return data;
 }
 
 export const authService = {
   login,
-  loginWithPin,
   logout,
-  getCurrentUser,
+  getUserAccess,
 };
 
 export default authService;
