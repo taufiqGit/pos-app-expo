@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { colors, radius, shadows, spacing } from "@/theme";
 
 const shifts = [
   {
@@ -52,7 +53,7 @@ export default function ShiftHistoryScreen() {
             </Text>
           </View>
           <TouchableOpacity style={styles.filterButton} activeOpacity={0.85}>
-            <Ionicons name="funnel-outline" size={18} color="#FFFFFF" />
+            <Ionicons name="funnel-outline" size={18} color={colors.white} />
             <Text style={styles.filterText}>Filter</Text>
           </TouchableOpacity>
         </View>
@@ -103,12 +104,20 @@ export default function ShiftHistoryScreen() {
               </View>
 
               <View style={styles.row}>
-                <Ionicons name="person-outline" size={16} color="#64748B" />
+                <Ionicons
+                  name="person-outline"
+                  size={16}
+                  color={colors.textSecondary}
+                />
                 <Text style={styles.rowText}>Kasir: {shift.cashier}</Text>
               </View>
 
               <View style={styles.row}>
-                <Ionicons name="time-outline" size={16} color="#64748B" />
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={colors.textSecondary}
+                />
                 <Text style={styles.rowText}>
                   {shift.openedAt} - {shift.closedAt}
                 </Text>
@@ -124,7 +133,11 @@ export default function ShiftHistoryScreen() {
                 activeOpacity={0.85}
               >
                 <Text style={styles.detailButtonText}>Lihat Detail</Text>
-                <Ionicons name="chevron-forward" size={16} color="#4F46E5" />
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
             </View>
           ))}
@@ -137,58 +150,59 @@ export default function ShiftHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.bg,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl * 2,
   },
   header: {
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
+    gap: spacing.md,
   },
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
   },
   subtitle: {
     fontSize: 13,
-    color: "#64748B",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
     marginTop: 4,
   },
   filterButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    backgroundColor: colors.ink,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
   },
   filterText: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontWeight: "600",
     fontSize: 12,
+    fontFamily: "PlusJakartaSans_600SemiBold",
   },
   summaryCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.card,
+    marginBottom: spacing.lg,
   },
   summaryItem: {
     alignItems: "center",
@@ -196,31 +210,31 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 11,
-    color: "#64748B",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
   },
   summaryValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
     marginTop: 4,
   },
   summaryDivider: {
     width: 1,
     height: 28,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.line,
   },
   list: {
-    gap: 12,
+    gap: spacing.md,
   },
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.card,
   },
   cardHeader: {
     flexDirection: "row",
@@ -231,28 +245,30 @@ const styles = StyleSheet.create({
   shiftId: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: radius.full,
   },
   statusActive: {
-    backgroundColor: "#DCFCE7",
+    backgroundColor: colors.successBg,
   },
   statusClosed: {
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.surfaceMuted,
   },
   statusText: {
     fontSize: 11,
     fontWeight: "700",
+    fontFamily: "PlusJakartaSans_700Bold",
   },
   statusTextActive: {
-    color: "#166534",
+    color: colors.success,
   },
   statusTextClosed: {
-    color: "#334155",
+    color: colors.textSecondary,
   },
   row: {
     flexDirection: "row",
@@ -262,7 +278,8 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontSize: 12,
-    color: "#475569",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
   },
   cardFooter: {
     marginTop: 6,
@@ -272,17 +289,19 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 12,
-    color: "#64748B",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
   },
   totalValue: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.primary,
   },
   detailButton: {
-    marginTop: 12,
+    marginTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
+    borderTopColor: colors.line,
     paddingTop: 10,
     flexDirection: "row",
     alignItems: "center",
@@ -291,6 +310,7 @@ const styles = StyleSheet.create({
   detailButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#4F46E5",
+    fontFamily: "PlusJakartaSans_600SemiBold",
+    color: colors.primary,
   },
 });

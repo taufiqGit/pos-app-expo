@@ -1,14 +1,10 @@
+import type { LucideIcon } from "lucide-react-native";
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-} from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, StyleProp, ViewStyle } from "react-native";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { colors, motion, radius, shadows, spacing, type ColorToken } from "@/theme";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "outline";
+type ButtonVariant = "primary" | "dark" | "white" | "dangerSoft" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps {
@@ -16,48 +12,57 @@ interface ButtonProps {
   onPress: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** Icon lucide kiri label */
+  icon?: LucideIcon;
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
-const variantStyles: Record<ButtonVariant, { container: ViewStyle; text: TextStyle }> = {
+const variantStyles: Record<ButtonVariant, { container: ViewStyle; labelColor: ColorToken; iconColor: string }> = {
   primary: {
-    container: { backgroundColor: "#4F46E5" },
-    text: { color: "#FFFFFF" },
+    container: { backgroundColor: colors.primary, ...shadows.raised, shadowColor: colors.primary, shadowOpacity: 0.35 },
+    labelColor: "onPrimary",
+    iconColor: colors.onPrimary,
   },
-  secondary: {
-    container: { backgroundColor: "#6B7280" },
-    text: { color: "#FFFFFF" },
+  dark: {
+    container: { backgroundColor: colors.ink, ...shadows.raised },
+    labelColor: "white",
+    iconColor: colors.white,
   },
-  danger: {
-    container: { backgroundColor: "#EF4444" },
-    text: { color: "#FFFFFF" },
+  white: {
+    container: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.lineStrong },
+    labelColor: "ink",
+    iconColor: colors.ink,
+  },
+  dangerSoft: {
+    container: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: colors.dangerBorder },
+    labelColor: "dangerText",
+    iconColor: colors.dangerText,
   },
   ghost: {
     container: { backgroundColor: "transparent" },
-    text: { color: "#4F46E5" },
-  },
-  outline: {
-    container: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: "#4F46E5" },
-    text: { color: "#4F46E5" },
+    labelColor: "primary",
+    iconColor: colors.primary,
   },
 };
 
-const sizeStyles: Record<ButtonSize, { container: ViewStyle; text: TextStyle }> = {
+const sizeStyles: Record<ButtonSize, { container: ViewStyle; labelVariant: "xs" | "sm"; iconSize: number }> = {
   sm: {
-    container: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
-    text: { fontSize: 13, fontWeight: "500" },
+    container: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: radius.md },
+    labelVariant: "xs",
+    iconSize: 14,
   },
   md: {
-    container: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-    text: { fontSize: 15, fontWeight: "600" },
+    container: { paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: radius.lg },
+    labelVariant: "sm",
+    iconSize: 16,
   },
   lg: {
-    container: { paddingVertical: 14, paddingHorizontal: 28, borderRadius: 10 },
-    text: { fontSize: 17, fontWeight: "700" },
+    container: { paddingVertical: spacing.lg, paddingHorizontal: spacing.xl, borderRadius: radius.xl },
+    labelVariant: "sm",
+    iconSize: 18,
   },
 };
 
@@ -66,46 +71,44 @@ const Button: React.FC<ButtonProps> = ({
   onPress,
   variant = "primary",
   size = "md",
+  icon: Icon,
   disabled = false,
   loading = false,
   fullWidth = false,
   style,
-  textStyle,
 }) => {
   const isDisabled = disabled || loading;
+  const current = variantStyles[variant];
+  const currentSize = sizeStyles[size];
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.75}
-      style={[
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      style={({ pressed }) => [
         styles.base,
-        variantStyles[variant].container,
-        sizeStyles[size].container,
+        current.container,
+        currentSize.container,
         fullWidth && styles.fullWidth,
         isDisabled && styles.disabled,
+        pressed && styles.pressed,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === "ghost" || variant === "outline" ? "#4F46E5" : "#FFFFFF"}
-        />
+        <ActivityIndicator size="small" color={current.iconColor} />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            variantStyles[variant].text,
-            sizeStyles[size].text,
-            textStyle,
-          ]}
-        >
-          {label}
-        </Text>
+        <>
+          {Icon && <Icon size={currentSize.iconSize} color={current.iconColor} strokeWidth={2.4} />}
+          <ThemedText variant={currentSize.labelVariant} weight="bold" color={current.labelColor}>
+            {label}
+          </ThemedText>
+        </>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -114,6 +117,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
+    gap: spacing.sm,
   },
   fullWidth: {
     width: "100%",
@@ -121,8 +125,9 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
-  text: {
-    letterSpacing: 0.3,
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: motion.pressScale }],
   },
 });
 

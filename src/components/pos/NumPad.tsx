@@ -1,11 +1,12 @@
-import React from "react";
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Vibration,
-} from "react-native";
+} from 'react-native';
+import { colors, radius } from '@/theme';
 
 interface NumPadProps {
   onPress: (value: string) => void;
@@ -48,7 +49,6 @@ const NumPad: React.FC<NumPadProps> = ({
     const isBackspace = key === "⌫";
     const isClear = key === "C";
     const isDecimal = key === ".";
-    const isZero = key === "0";
 
     const isHidden = isDecimal && !showDecimal;
     const replacedWithClear = isDecimal && !showDecimal && showClear;
@@ -102,26 +102,26 @@ export default NumPad;
 
 const styles = StyleSheet.create({
   container: {
-    width: "100%",
+    width: '100%',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
   },
   row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
   key: {
     flex: 1,
     marginHorizontal: 4,
     height: 64,
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
+    borderRadius: radius.sm,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
@@ -133,29 +133,29 @@ const styles = StyleSheet.create({
     height: 64,
   },
   backspaceKey: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerBg,
   },
   clearKey: {
-    backgroundColor: "#FEF3C7",
+    backgroundColor: colors.orangeBg,
   },
   keyDisabled: {
     opacity: 0.4,
   },
   keyText: {
     fontSize: 22,
-    fontWeight: "600",
-    color: "#1F2937",
+    fontWeight: '600',
+    color: colors.ink,
   },
   backspaceText: {
     fontSize: 20,
-    color: "#EF4444",
+    color: colors.danger,
   },
   clearText: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#D97706",
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
   keyTextDisabled: {
-    color: "#9CA3AF",
+    color: colors.muted,
   },
 });

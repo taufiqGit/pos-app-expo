@@ -1,59 +1,57 @@
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import React from "react";
+import { StyleSheet, StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
+import { colors, font } from "@/theme";
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
-type BadgeSize = 'sm' | 'md' | 'lg';
+type BadgeVariant = "success" | "danger" | "info" | "warning" | "neutral";
+type BadgeSize = "sm" | "md";
 
 interface BadgeProps {
   label: string;
   variant?: BadgeVariant;
   size?: BadgeSize;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   textStyle?: TextStyle;
 }
 
 const variantStyles: Record<BadgeVariant, { container: ViewStyle; text: TextStyle }> = {
-  default: {
-    container: { backgroundColor: '#E5E7EB' },
-    text: { color: '#374151' },
-  },
   success: {
-    container: { backgroundColor: '#D1FAE5' },
-    text: { color: '#065F46' },
-  },
-  warning: {
-    container: { backgroundColor: '#FEF3C7' },
-    text: { color: '#92400E' },
+    container: { backgroundColor: colors.successBg },
+    text: { color: colors.success },
   },
   danger: {
-    container: { backgroundColor: '#FEE2E2' },
-    text: { color: '#991B1B' },
+    container: { backgroundColor: colors.dangerBg },
+    text: { color: colors.dangerText },
   },
   info: {
-    container: { backgroundColor: '#DBEAFE' },
-    text: { color: '#1E40AF' },
+    container: { backgroundColor: colors.infoBg },
+    text: { color: colors.info },
+  },
+  warning: {
+    container: { backgroundColor: colors.orangeBg },
+    text: { color: colors.primary },
+  },
+  neutral: {
+    container: { backgroundColor: colors.surfaceMuted },
+    text: { color: colors.textSecondary },
   },
 };
 
-const sizeStyles: Record<BadgeSize, { container: ViewStyle; text: TextStyle }> = {
+const sizeStyles: Record<BadgeSize, { container: ViewStyle; fontSize: 9 | 10 }> = {
   sm: {
-    container: { paddingHorizontal: 6, paddingVertical: 2 },
-    text: { fontSize: 10 },
+    container: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+    fontSize: 9,
   },
   md: {
-    container: { paddingHorizontal: 10, paddingVertical: 4 },
-    text: { fontSize: 12 },
-  },
-  lg: {
-    container: { paddingHorizontal: 14, paddingVertical: 6 },
-    text: { fontSize: 14 },
+    container: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+    fontSize: 10,
   },
 };
 
+/** Chip status kecil — semua uppercase bold sesuai mockup (Success/Refunded/DINE-IN/TERHUBUNG). */
 const Badge: React.FC<BadgeProps> = ({
   label,
-  variant = 'default',
-  size = 'md',
+  variant = "neutral",
+  size = "sm",
   style,
   textStyle,
 }) => {
@@ -62,6 +60,7 @@ const Badge: React.FC<BadgeProps> = ({
 
   return (
     <View
+      accessibilityLabel={label}
       style={[
         styles.container,
         currentVariant.container,
@@ -73,7 +72,7 @@ const Badge: React.FC<BadgeProps> = ({
         style={[
           styles.text,
           currentVariant.text,
-          currentSize.text,
+          { fontSize: currentSize.fontSize },
           textStyle,
         ]}
         numberOfLines={1}
@@ -86,14 +85,15 @@ const Badge: React.FC<BadgeProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignSelf: "flex-start",
+    justifyContent: "center",
+    alignItems: "center",
   },
   text: {
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontFamily: font.bold,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });
 

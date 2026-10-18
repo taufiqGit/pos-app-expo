@@ -1,90 +1,87 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import React from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { authService } from "../../services/authService";
-import { UserAccess } from "../../types/user";
+import { ChevronLeft, Mail, ShieldCheck } from "lucide-react-native";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { colors, radius, shadows, spacing } from "@/theme";
+import { useAuthStore } from "@/store/authStore";
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Administrator",
+  cashier: "Kasir",
+  manager: "Manager",
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [user, setUser] = useState<UserAccess | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const user = useAuthStore((state) => state.user);
 
-  const loadUser = async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await authService.getUserAccess();
-      setUser(data);
-    } catch (error: any) {
-      setErrorMessage(
-        error?.message ?? "Gagal memuat profil. Silakan coba lagi.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadUser();
-  }, []);
+  const initials = (user?.name ?? "POS")
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="chevron-back" size={20} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Profile</Text>
+        <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={20} color={colors.ink} />
+        </Pressable>
+        <ThemedText variant="lg" weight="bold" color="ink">
+          Profile
+        </ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
-      {isLoading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#4F46E5" />
-        </View>
-      ) : errorMessage ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={loadUser}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.retryButtonText}>Coba Lagi</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
+      <View style={styles.content}>
         <View style={styles.card}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={28} color="#4F46E5" />
+            <ThemedText variant="xxl" weight="bold" color="primary">
+              {initials}
+            </ThemedText>
           </View>
-          <Text style={styles.name}>{user?.username}</Text>
-          <Text style={styles.meta}>{user?.email}</Text>
-          <Text style={styles.meta}>Role: {user?.role}</Text>
-          {user?.phone ? <Text style={styles.meta}>{user.phone}</Text> : null}
-          <View style={styles.permissionsContainer}>
-            <Text style={styles.permissionsTitle}>
-              Hak Akses ({user?.permissions.length ?? 0})
-            </Text>
-            <Text style={styles.permissionsList}>
-              {user?.permissions.join(", ")}
-            </Text>
+          <ThemedText variant="lg" weight="bold" color="ink" style={styles.name}>
+            {user?.name ?? "Pengguna POS"}
+          </ThemedText>
+          <View style={styles.roleBadge}>
+            <ThemedText variant="micro" weight="bold" color="primary" uppercase>
+              {user ? (ROLE_LABEL[user.role] ?? user.role) : "-"}
+            </ThemedText>
+          </View>
+
+          <View style={styles.infoList}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIcon}>
+                <Mail size={16} color={colors.textSecondary} />
+              </View>
+              <View style={styles.infoTexts}>
+                <ThemedText variant="micro" color="muted">
+                  Email
+                </ThemedText>
+                <ThemedText variant="sm" weight="medium" color="inkSoft">
+                  {user?.email ?? "-"}
+                </ThemedText>
+              </View>
+            </View>
+            <View style={[styles.infoRow, styles.infoRowLast]}>
+              <View style={styles.infoIcon}>
+                <ShieldCheck size={16} color={colors.textSecondary} />
+              </View>
+              <View style={styles.infoTexts}>
+                <ThemedText variant="micro" color="muted">
+                  User ID
+                </ThemedText>
+                <ThemedText variant="sm" weight="medium" color="inkSoft">
+                  {user?.id ?? "-"}
+                </ThemedText>
+              </View>
+            </View>
           </View>
         </View>
-      )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -92,104 +89,88 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.bg,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  headerSpacer: {
-    width: 32,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
   },
   backButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0F172A",
+  headerSpacer: {
+    width: 32,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
   },
   card: {
-    margin: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.card,
+    padding: spacing.xl,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#EEF2FF",
+    width: 80,
+    height: 80,
+    borderRadius: radius.full,
+    backgroundColor: colors.orangeBg,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: spacing.md,
   },
   name: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
+    marginBottom: spacing.sm,
   },
-  meta: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 4,
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.orangeBg,
+    marginBottom: spacing.lg,
   },
-  stateContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  errorText: {
-    fontSize: 14,
-    color: "#DC2626",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: "#4F46E5",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  permissionsContainer: {
-    marginTop: 16,
+  infoList: {
     alignSelf: "stretch",
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    paddingTop: 12,
+    borderTopColor: colors.lineStrong,
+    borderStyle: "dashed",
   },
-  permissionsTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 4,
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
-  permissionsList: {
-    fontSize: 12,
-    color: "#64748B",
-    textAlign: "center",
+  infoRowLast: {
+    borderBottomWidth: 0,
+  },
+  infoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoTexts: {
+    flex: 1,
+    gap: 2,
   },
 });

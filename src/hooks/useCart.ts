@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { useCartStore } from "../store/cartStore";
-import { CartItem, Product } from "../types";
+import { useCartStore, cartLineId } from "../store/cartStore";
+import { CartItem, Product, ProductUnit, resolveUnitPrice, toBaseQty } from "../types";
 
 export const useCart = () => {
   const {
@@ -32,47 +32,60 @@ export const useCart = () => {
 
   const total = subtotal - discountTotal + taxAmount;
 
-  const itemCount = items.reduce(
-    (sum: number, item: CartItem) => sum + item.quantity,
-    0,
-  );
+  /** Jumlah baris (beda satuan = baris beda) */
+  const itemCount = items.length;
 
   const addProduct = useCallback(
-    (product: Product, quantity = 1) => {
-      addItem(product, quantity);
+    (product: Product, unit?: ProductUnit, quantity = 1) => {
+      const price = resolveUnitPrice(product, unit);
+      addItem({
+        id: cartLineId(product.id, unit?.id),
+        productId: product.id,
+        name: product.name,
+        price,
+        quantity,
+        productUnitId: unit?.id ?? null,
+        unitLabel: unit?.label,
+        baseQty: toBaseQty(quantity, unit),
+        image: product.image,
+        sku: product.sku,
+        tax: product.taxRate,
+      });
     },
     [addItem],
   );
 
   const incrementItem = useCallback(
-    (productId: string) => {
-      const item = items.find((i: CartItem) => i.id === productId);
-      if (item) updateQuantity(productId, item.quantity + 1);
+    (lineId: string) => {
+      const item = items.find((i: CartItem) => i.id === lineId);
+      if (item) updateQuantity(lineId, item.quantity + 1);
     },
     [items, updateQuantity],
   );
 
   const decrementItem = useCallback(
-    (productId: string) => {
-      const item = items.find((i: CartItem) => i.id === productId);
+    (lineId: string) => {
+      const item = items.find((i: CartItem) => i.id === lineId);
       if (!item) return;
       if (item.quantity <= 1) {
-        removeItem(productId);
+        removeItem(lineId);
       } else {
-        updateQuantity(productId, item.quantity - 1);
+        updateQuantity(lineId, item.quantity - 1);
       }
     },
     [items, removeItem, updateQuantity],
   );
 
   const isInCart = useCallback(
-    (productId: string) => items.some((i: CartItem) => i.id === productId),
+    (productId: string) => items.some((i: CartItem) => i.productId === productId),
     [items],
   );
 
   const getItemQuantity = useCallback(
     (productId: string): number =>
-      items.find((i: CartItem) => i.id === productId)?.quantity ?? 0,
+      items
+        .filter((i: CartItem) => i.productId === productId)
+        .reduce((sum: number, i: CartItem) => sum + i.quantity, 0),
     [items],
   );
 

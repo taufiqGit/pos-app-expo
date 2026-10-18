@@ -1,172 +1,209 @@
+import { useFocusEffect, useRouter } from "expo-router";
+import { ArrowRight, PackageSearch, Search } from "lucide-react-native";
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-} from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ProductCard } from "@/components/pos/ProductCard";
+import { UnitPickerSheet } from "@/components/pos/UnitPickerSheet";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { useCart } from "@/hooks/useCart";
+import { useProducts } from "@/hooks/useProducts";
+import { useAuthStore } from "@/store/authStore";
+import { useOutletStore } from "@/store/outletStore";
+import { colors, motion, radius, shadows, spacing } from "@/theme";
+import type { Product } from "@/types";
+import { formatRupiah } from "@/utils/format";
 
-type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  qty: number;
-};
+interface CategoryPillProps {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}
 
-const QUICK_ITEMS = [
-  { id: "1", name: "Kopi Susu", price: 18000 },
-  { id: "2", name: "Americano", price: 15000 },
-  { id: "3", name: "Roti Bakar", price: 22000 },
-  { id: "4", name: "Croissant", price: 25000 },
-];
+function CategoryPill({ label, active, onPress }: CategoryPillProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      style={({ pressed }) => [
+        styles.pill,
+        active ? styles.pillActive : styles.pillInactive,
+        pressed && styles.pillPressed,
+      ]}
+    >
+      <ThemedText variant="xs" weight="semiBold" color={active ? "onPrimary" : "textSecondary"}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
 
 export default function CashierScreen() {
-  const [search, setSearch] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const selectedOutlet = useOutletStore((s) => s.selectedOutlet);
 
-  const filtered = QUICK_ITEMS.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase()),
+  const { filteredProducts, categories, loading: productsLoading, error: productsError, searchQuery, searchProducts, selectedCategory, filterByCategory, fetchProducts } =
+    useProducts();
+  const { itemCount, total, isEmpty, addProduct } = useCart();
+
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
+
+  const displayName = user?.name ?? "Kasir";
+  const outletLabel = selectedOutlet ? `${selectedOutlet.name} • ${selectedOutlet.code}` : "Outlet belum dipilih";
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchProducts();
+    }, [fetchProducts]),
   );
 
-  const addToCart = (item: (typeof QUICK_ITEMS)[number]) => {
-    setCart((prev) => {
-      const exists = prev.find((c) => c.id === item.id);
-      if (exists) {
-        return prev.map((c) =>
-          c.id === item.id ? { ...c, qty: c.qty + 1 } : c,
-        );
-      }
-      return [...prev, { ...item, qty: 1 }];
-    });
+  const handleAddProduct = (product: Product) => {
+    if ((product.productUnits?.length ?? 0) > 0) {
+      // Produk multi-satuan → pilih satuan & qty dulu
+      setPickerProduct(product);
+      return;
+    }
+    addProduct(product);
   };
 
-  const decrement = (id: string) => {
-    setCart((prev) =>
-      prev
-        .map((c) => (c.id === id ? { ...c, qty: c.qty - 1 } : c))
-        .filter((c) => c.qty > 0),
-    );
+  const handleViewOrder = () => {
+    router.push("/kasir/order-review");
   };
-
-  const increment = (id: string) => {
-    setCart((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, qty: c.qty + 1 } : c)),
-    );
-  };
-
-  const total = cart.reduce((sum, c) => sum + c.price * c.qty, 0);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header: profil + tombol search + category pills (kasir.html) */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Kasir</Text>
-          <Text style={styles.subtitle}>Pilih produk dan buat transaksi</Text>
-        </View>
-        <TouchableOpacity style={styles.shiftButton} activeOpacity={0.85}>
-          <Text style={styles.shiftButtonText}>Mulai Shift</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Cari produk..."
-          placeholderTextColor="#94A3B8"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      <View style={styles.body}>
-        <View style={styles.productsPanel}>
-          <Text style={styles.panelTitle}>Produk Cepat</Text>
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={styles.productRow}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.productCard}
-                onPress={() => addToCart(item)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.productPrice}>
-                  Rp {item.price.toLocaleString("id-ID")}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-
-        <View style={styles.cartPanel}>
-          <Text style={styles.panelTitle}>Keranjang</Text>
-          {cart.length === 0 ? (
-            <View style={styles.emptyCart}>
-              <Text style={styles.emptyCartText}>
-                Belum ada item di keranjang
-              </Text>
+        <View style={styles.headerRow}>
+          <View style={styles.profile}>
+            <View style={styles.avatar}>
+              <ThemedText variant="base" weight="bold" color="primary">
+                {displayName.charAt(0).toUpperCase()}
+              </ThemedText>
             </View>
-          ) : (
-            <FlatList
-              data={cart}
-              keyExtractor={(item) => item.id}
-              style={styles.cartList}
-              renderItem={({ item }) => (
-                <View style={styles.cartItem}>
-                  <View style={styles.cartItemInfo}>
-                    <Text style={styles.cartItemName}>{item.name}</Text>
-                    <Text style={styles.cartItemPrice}>
-                      Rp {(item.price * item.qty).toLocaleString("id-ID")}
-                    </Text>
-                  </View>
-                  <View style={styles.qtyControls}>
-                    <TouchableOpacity
-                      style={styles.qtyBtn}
-                      onPress={() => decrement(item.id)}
-                    >
-                      <Text style={styles.qtyBtnText}>−</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.qtyText}>{item.qty}</Text>
-                    <TouchableOpacity
-                      style={styles.qtyBtn}
-                      onPress={() => increment(item.id)}
-                    >
-                      <Text style={styles.qtyBtnText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
+            <View style={styles.profileInfo}>
+              <ThemedText variant="sm" weight="bold" color="ink" numberOfLines={1}>
+                {displayName}
+              </ThemedText>
+              <View style={styles.metaRow}>
+                <View style={styles.statusDot} />
+                <ThemedText variant="micro" color="textSecondary" numberOfLines={1}>
+                  {outletLabel}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => setSearchVisible((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="Cari produk"
+            style={({ pressed }) => [styles.searchButton, pressed && styles.pressed]}
+          >
+            <Search size={20} color={colors.textSecondary} />
+          </Pressable>
+        </View>
+
+        {searchVisible ? (
+          <View style={styles.searchInputWrap}>
+            <Search size={16} color={colors.muted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Cari produk..."
+              placeholderTextColor={colors.muted}
+              value={searchQuery}
+              onChangeText={searchProducts}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-          )}
+          </View>
+        ) : null}
 
-          <View style={styles.cartFooter}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalAmount}>
-                Rp {total.toLocaleString("id-ID")}
-              </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillsContent}
+        >
+          <CategoryPill
+            label="All"
+            active={selectedCategory === null}
+            onPress={() => filterByCategory(null)}
+          />
+          {categories.map((category) => (
+            <CategoryPill
+              key={category}
+              label={category}
+              active={selectedCategory === category}
+              onPress={() => filterByCategory(category)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Grid produk */}
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        contentContainerStyle={styles.gridContent}
+        columnWrapperStyle={styles.gridRow}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => <ProductCard product={item} onAdd={handleAddProduct} />}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <EmptyState
+              icon={PackageSearch}
+              title={productsError ? "Gagal memuat produk" : "Produk tidak ditemukan"}
+              subtitle={productsError ?? (productsLoading ? "Memuat..." : "Coba kata kunci lain atau ganti kategori")}
+            />
+          </View>
+        }
+      />
+
+      {/* Sheet pilih satuan (produk multi-satuan) */}
+      <UnitPickerSheet
+        product={pickerProduct}
+        visible={pickerProduct !== null}
+        onClose={() => setPickerProduct(null)}
+        onConfirm={(product, unit, quantity) => addProduct(product, unit, quantity)}
+      />
+
+      {/* Floating checkout bar (hanya saat cart tidak kosong) */}
+      {!isEmpty ? (
+        <View style={styles.checkoutBar} pointerEvents="box-none">
+          <View style={styles.checkoutBarInner}>
+            <View style={styles.checkoutLeft}>
+              <View style={styles.itemCountBadge}>
+                <ThemedText variant="xs" weight="bold" color="onPrimary">
+                  {itemCount}
+                </ThemedText>
+              </View>
+              <View>
+                <ThemedText variant="micro" color="muted">
+                  Items selected
+                </ThemedText>
+                <ThemedText variant="sm" weight="bold" color="white">
+                  {formatRupiah(total)}
+                </ThemedText>
+              </View>
             </View>
-
-            <TouchableOpacity
-              style={[
-                styles.checkoutBtn,
-                cart.length === 0 && styles.checkoutDisabled,
-              ]}
-              disabled={cart.length === 0}
-              activeOpacity={0.85}
+            <Pressable
+              onPress={handleViewOrder}
+              accessibilityRole="button"
+              accessibilityLabel="Lihat pesanan"
+              style={({ pressed }) => [styles.viewOrderButton, pressed && styles.pressed]}
             >
-              <Text style={styles.checkoutText}>Bayar</Text>
-            </TouchableOpacity>
+              <ThemedText variant="xs" weight="bold" color="onPrimary">
+                View Order
+              </ThemedText>
+              <ArrowRight size={14} color={colors.onPrimary} strokeWidth={2.6} />
+            </Pressable>
           </View>
         </View>
-      </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -174,202 +211,160 @@ export default function CashierScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1220",
+    backgroundColor: colors.bg,
   },
+
+  // Header
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  headerRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#F8FAFC",
-  },
-  subtitle: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 4,
-  },
-  shiftButton: {
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  shiftButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  searchContainer: {
+  profile: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#1F2937",
+    gap: spacing.md,
+    flex: 1,
+    marginRight: spacing.md,
   },
-  searchIcon: {
-    fontSize: 14,
-    marginRight: 8,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileInfo: {
+    flexShrink: 1,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.success,
+  },
+  searchButton: {
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
+  },
+
+  // Search input
+  searchInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: spacing.md,
+    height: 44,
   },
   searchInput: {
     flex: 1,
-    height: 44,
+    fontFamily: "PlusJakartaSans_500Medium",
     fontSize: 14,
-    color: "#E2E8F0",
+    color: colors.ink,
   },
-  body: {
+
+  // Category pills
+  pillsContent: {
+    gap: spacing.md,
+  },
+  pill: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+  },
+  pillActive: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pillInactive: {
+    backgroundColor: colors.card,
+  },
+  pillPressed: {
+    opacity: 0.85,
+    transform: [{ scale: motion.pressScale }],
+  },
+
+  // Grid produk
+  gridContent: {
+    padding: spacing.screen,
+    paddingBottom: 120,
+    gap: spacing.lg,
+  },
+  gridRow: {
+    gap: spacing.lg,
+  },
+  emptyWrap: {
     flex: 1,
+    marginTop: spacing.xxxl,
+  },
+
+  // Floating checkout bar
+  checkoutBar: {
+    position: "absolute",
+    left: spacing.screen,
+    right: spacing.screen,
+    bottom: spacing.md,
+  },
+  checkoutBarInner: {
     flexDirection: "row",
-  },
-  productsPanel: {
-    flex: 1,
-    padding: 12,
-    borderRightWidth: 1,
-    borderRightColor: "#1F2937",
-  },
-  cartPanel: {
-    width: 280,
-    padding: 12,
-    backgroundColor: "#0F172A",
-  },
-  panelTitle: {
-    color: "#CBD5F5",
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  productRow: {
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  productCard: {
-    flex: 1,
-    backgroundColor: "#111827",
-    borderRadius: 10,
-    padding: 14,
-    marginHorizontal: 4,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#1F2937",
+    justifyContent: "space-between",
+    backgroundColor: colors.ink,
+    borderRadius: radius.lg,
+    padding: spacing.card,
+    ...shadows.overlay,
+    shadowColor: colors.ink,
   },
-  productName: {
-    color: "#E2E8F0",
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  productPrice: {
-    color: "#A5B4FC",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  emptyCart: {
+  checkoutLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
     flex: 1,
+  },
+  itemCountBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  emptyCartText: {
-    color: "#64748B",
-    fontSize: 12,
-  },
-  cartList: {
-    flex: 1,
-  },
-  cartItem: {
-    backgroundColor: "#111827",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#1F2937",
-  },
-  cartItemInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  cartItemName: {
-    color: "#E2E8F0",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  cartItemPrice: {
-    color: "#A5B4FC",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  qtyControls: {
+  viewOrderButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  qtyBtn: {
-    backgroundColor: "#1F2937",
-    borderRadius: 6,
-    width: 26,
-    height: 26,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qtyBtnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  qtyText: {
-    color: "#E2E8F0",
-    fontSize: 13,
-    fontWeight: "600",
-    marginHorizontal: 10,
-    minWidth: 18,
-    textAlign: "center",
-  },
-  cartFooter: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#1F2937",
-    marginTop: 8,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  totalLabel: {
-    color: "#94A3B8",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  totalAmount: {
-    color: "#F8FAFC",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  checkoutBtn: {
-    backgroundColor: "#4F46E5",
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  checkoutDisabled: {
-    backgroundColor: "#334155",
-  },
-  checkoutText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: motion.pressScale }],
   },
 });

@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Product } from '../types';
+import { fetchMobileProducts } from '../services/productService';
 
 interface UseProductsReturn {
   products: Product[];
   filteredProducts: Product[];
+  /** Daftar kategori unik dari produk */
+  categories: string[];
   loading: boolean;
   error: string | null;
   searchQuery: string;
@@ -17,20 +20,47 @@ interface UseProductsReturn {
 
 export const useProducts = (): UseProductsReturn => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
+  const categories = useMemo(() => {
+    const unique = new Set(
+      products
+        .map((p) => p.category)
+        .filter((c): c is string => Boolean(c)),
+    );
+    return Array.from(unique);
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    let result = products;
+
+    if (searchQuery.trim().length > 0) {
+      const lower = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lower) ||
+          p.subtitle?.toLowerCase().includes(lower) ||
+          p.sku?.toLowerCase().includes(lower) ||
+          p.barcode?.toLowerCase().includes(lower),
+      );
+    }
+
+    if (selectedCategory !== null) {
+      result = result.filter((p) => p.category === selectedCategory);
+    }
+
+    return result;
+  }, [products, searchQuery, selectedCategory]);
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await productService.getAll();
-      // setProducts(response.data);
-      setProducts([]);
+      const data = await fetchMobileProducts();
+      setProducts(data);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to fetch products');
     } finally {
@@ -38,69 +68,29 @@ export const useProducts = (): UseProductsReturn => {
     }
   }, []);
 
-  const applyFilters = useCallback(
-    (query: string, category: string | null, source: Product[]) => {
-      let result = [...source];
+  const searchProducts = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
-      if (query.trim().length > 0) {
-        const lower = query.toLowerCase();
-        result = result.filter(
-          (p) =>
-            p.name.toLowerCase().includes(lower) ||
-            p.sku?.toLowerCase().includes(lower) ||
-            p.barcode?.toLowerCase().includes(lower)
-        );
-      }
-
-      if (category !== null) {
-        result = result.filter((p) => p.category === category);
-      }
-
-      setFilteredProducts(result);
-    },
-    []
-  );
-
-  const searchProducts = useCallback(
-    (query: string) => {
-      setSearchQuery(query);
-      applyFilters(query, selectedCategory, products);
-    },
-    [products, selectedCategory, applyFilters]
-  );
-
-  const filterByCategory = useCallback(
-    (category: string | null) => {
-      setSelectedCategory(category);
-      applyFilters(searchQuery, category, products);
-    },
-    [products, searchQuery, applyFilters]
-  );
+  const filterByCategory = useCallback((category: string | null) => {
+    setSelectedCategory(category);
+  }, []);
 
   const getProductById = useCallback(
     (id: string): Product | undefined => {
       return products.find((p) => p.id === id);
     },
-    [products]
+    [products],
   );
 
   const refreshProducts = useCallback(async () => {
     await fetchProducts();
   }, [fetchProducts]);
 
-  // Re-apply filters whenever the base products list changes
-  useEffect(() => {
-    applyFilters(searchQuery, selectedCategory, products);
-  }, [products, searchQuery, selectedCategory, applyFilters]);
-
-  // Initial fetch on mount
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
   return {
     products,
     filteredProducts,
+    categories,
     loading,
     error,
     searchQuery,

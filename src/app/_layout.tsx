@@ -1,10 +1,13 @@
 import { Slot, usePathname, useRouter, useSegments } from "expo-router";
+import { useFonts } from "expo-font";
+import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { apiEvents } from "../services/apiEvents";
 import { refreshTokens } from "../services/api";
 import { authStorage } from "../services/authStorage";
 import { useOutletStore } from "../store/outletStore";
+import { colors, fontAssets } from "@/theme";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -13,6 +16,7 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
   const { selectedOutlet, hasHydrated } = useOutletStore();
+  const [fontsLoaded] = useFonts(fontAssets);
 
   const checkAuth = async (): Promise<boolean> => {
     const accessToken = await authStorage.getAccessToken();
@@ -29,7 +33,6 @@ export default function RootLayout() {
     } catch {
       console.log("refreshTokens failed");
       return false;
-      return false;
     }
   };
 
@@ -42,14 +45,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Prevent infinite loader if persisted store hydration does not finish.
+    if (hasHydrated) return;
+
     const timeout = setTimeout(() => {
       setHydrationTimedOut(true);
     }, 2000);
-
-    if (hasHydrated) {
-      clearTimeout(timeout);
-      setHydrationTimedOut(false);
-    }
 
     return () => clearTimeout(timeout);
   }, [hasHydrated]);
@@ -94,15 +94,20 @@ export default function RootLayout() {
     })();
   }, [isReady, hasHydrated, hydrationTimedOut, segments, pathname, router, selectedOutlet]);
 
-  if (!isReady || (!hasHydrated && !hydrationTimedOut)) {
+  if (!isReady || !fontsLoaded || (!hasHydrated && !hydrationTimedOut)) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#ed0b0bff" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
-  return <Slot />;
+  return (
+    <>
+      <StatusBar style="dark" />
+      <Slot />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -110,6 +115,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.bg,
   },
 });

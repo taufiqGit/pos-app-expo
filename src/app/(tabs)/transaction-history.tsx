@@ -1,161 +1,248 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-} from "react-native";
+  Banknote,
+  Calendar,
+  ChevronRight,
+  CreditCard,
+  ReceiptText,
+  Search,
+  SearchX,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { colors, motion, radius, shadows, spacing } from "@/theme";
+import { formatRupiah } from "@/utils/format";
 
-type Transaction = {
+type TransactionStatus = "success" | "refunded";
+type PaymentKind = "cash" | "cashless" | "ewallet";
+
+interface MockTransaction {
   id: string;
-  customer: string;
-  total: string;
-  method: string;
-  status: "Paid" | "Refunded";
   time: string;
-};
+  menuCount: number;
+  total: number;
+  status: TransactionStatus;
+  kind: PaymentKind;
+  day: "today" | "yesterday";
+}
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: "#1042",
-    customer: "Walk-in",
-    total: "Rp 152.000",
-    method: "Tunai",
-    status: "Paid",
-    time: "2 menit lalu",
-  },
-  {
-    id: "#1041",
-    customer: "Dian S.",
-    total: "Rp 48.500",
-    method: "QRIS",
-    status: "Paid",
-    time: "15 menit lalu",
-  },
-  {
-    id: "#1040",
-    customer: "Walk-in",
-    total: "Rp 73.000",
-    method: "Kartu",
-    status: "Refunded",
-    time: "42 menit lalu",
-  },
-  {
-    id: "#1039",
-    customer: "Andi P.",
-    total: "Rp 29.900",
-    method: "Tunai",
-    status: "Paid",
-    time: "1 jam lalu",
-  },
+const MOCK_TRANSACTIONS: MockTransaction[] = [
+  { id: "TRX-8829", time: "09:41", menuCount: 3, total: 18500, status: "success", kind: "cashless", day: "today" },
+  { id: "TRX-8828", time: "08:20", menuCount: 1, total: 5350, status: "success", kind: "cash", day: "today" },
+  { id: "TRX-8815", time: "19:15", menuCount: 5, total: 42100, status: "refunded", kind: "ewallet", day: "yesterday" },
+  { id: "TRX-8810", time: "13:02", menuCount: 2, total: 67000, status: "success", kind: "cash", day: "yesterday" },
 ];
 
-const FILTERS = ["Semua", "Paid", "Refunded"] as const;
-type FilterType = (typeof FILTERS)[number];
+const PAYMENT_META: Record<PaymentKind, { label: string; Icon: LucideIcon }> = {
+  cash: { label: "Tunai", Icon: Banknote },
+  cashless: { label: "Cashless Credit", Icon: CreditCard },
+  ewallet: { label: "OVO / QRIS", Icon: Wallet },
+};
 
-export default function TransactionHistoryScreen() {
-  const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<FilterType>("Semua");
+interface StatPillProps {
+  label: string;
+  dotColor: string;
+  textColor: string;
+  bgColor: string;
+}
 
-  const filtered = MOCK_TRANSACTIONS.filter((trx) => {
-    const matchSearch =
-      trx.id.toLowerCase().includes(search.toLowerCase()) ||
-      trx.customer.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = activeFilter === "Semua" || trx.status === activeFilter;
-    return matchSearch && matchFilter;
-  });
-
-  const renderItem = ({ item }: { item: Transaction }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.trxId}>{item.id}</Text>
-          <Text style={styles.customer}>{item.customer}</Text>
-        </View>
-        <View style={styles.amountWrap}>
-          <Text style={styles.amount}>{item.total}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              item.status === "Refunded"
-                ? styles.statusRefunded
-                : styles.statusPaid,
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                item.status === "Refunded"
-                  ? styles.statusTextRefunded
-                  : styles.statusTextPaid,
-              ]}
-            >
-              {item.status}
-            </Text>
-          </View>
-        </View>
-      </View>
-      <View style={styles.cardFooter}>
-        <Text style={styles.meta}>{item.method}</Text>
-        <Text style={styles.meta}>{item.time}</Text>
-      </View>
+function StatPill({ label, dotColor, textColor, bgColor }: StatPillProps) {
+  return (
+    <View style={[styles.statPill, { backgroundColor: bgColor }]}>
+      <View style={[styles.statDot, { backgroundColor: dotColor }]} />
+      <ThemedText variant="micro" weight="bold" style={{ color: textColor }}>
+        {label}
+      </ThemedText>
     </View>
   );
+}
+
+export default function TransactionHistoryScreen() {
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const todayTotal = useMemo(
+    () => MOCK_TRANSACTIONS.filter((t) => t.day === "today").reduce((sum, t) => sum + t.total, 0),
+    [],
+  );
+
+  const filtered = useMemo(() => {
+    const lower = search.toLowerCase();
+    return MOCK_TRANSACTIONS.filter((t) => t.id.toLowerCase().includes(lower));
+  }, [search]);
+
+  const todayTransactions = filtered.filter((t) => t.day === "today");
+  const yesterdayTransactions = filtered.filter((t) => t.day === "yesterday");
+
+  const renderTransaction = (item: MockTransaction) => {
+    const { label: methodLabel, Icon: MethodIcon } = PAYMENT_META[item.kind];
+    const isSuccess = item.status === "success";
+    return (
+      <Pressable
+        key={item.id}
+        // TODO: detail transaksi (route /transaction/[id]) menyusul bersama API
+        accessibilityRole="button"
+        accessibilityLabel={`Order ${item.id}, ${formatRupiah(item.total)}`}
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIdentity}>
+            <View style={styles.receiptIcon}>
+              <ReceiptText size={20} color={colors.white} />
+            </View>
+            <View>
+              <ThemedText variant="sm" weight="bold" color="ink">
+                Order #{item.id}
+              </ThemedText>
+              <ThemedText variant="micro" color="muted">
+                {item.time} • {item.menuCount} Menu
+              </ThemedText>
+            </View>
+          </View>
+          <View style={styles.cardAmount}>
+            <ThemedText variant="sm" weight="bold" color="primary">
+              {formatRupiah(item.total)}
+            </ThemedText>
+            <View
+              style={[
+                styles.statusBadge,
+                isSuccess ? styles.statusSuccess : styles.statusRefunded,
+              ]}
+            >
+              <ThemedText
+                variant="micro"
+                weight="bold"
+                color={isSuccess ? "success" : "danger"}
+              >
+                {isSuccess ? "Success" : "Refunded"}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+        <View style={styles.cardFooter}>
+          <View style={styles.methodRow}>
+            <MethodIcon size={14} color={colors.muted} />
+            <ThemedText variant="xs" color="textSecondary">
+              {methodLabel}
+            </ThemedText>
+          </View>
+          <ChevronRight size={18} color={colors.faint} />
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header — history-sales.html */}
       <View style={styles.header}>
-        <Text style={styles.title}>Riwayat Transaksi</Text>
-        <Text style={styles.subtitle}>Daftar transaksi terbaru dari kasir</Text>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Cari ID / nama pelanggan"
-          placeholderTextColor="#9CA3AF"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      <View style={styles.filterRow}>
-        {FILTERS.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterChip,
-              activeFilter === filter && styles.filterChipActive,
-            ]}
-            onPress={() => setActiveFilter(filter)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeFilter === filter && styles.filterChipTextActive,
-              ]}
+        <View style={styles.headerTop}>
+          <View style={{ flex: 1 }}>
+            <ThemedText variant="xl" weight="bold" color="ink">
+              Riwayat Penjualan
+            </ThemedText>
+            <ThemedText variant="micro" color="textSecondary" uppercase>
+              Total hari ini: {formatRupiah(todayTotal)}
+            </ThemedText>
+          </View>
+          <View style={styles.headerActions}>
+            <Pressable
+              // TODO: filter rentang tanggal menyusul
+              accessibilityRole="button"
+              accessibilityLabel="Filter tanggal"
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
             >
-              {filter}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Calendar size={20} color={colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              onPress={() => setSearchVisible((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Cari transaksi"
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            >
+              <Search size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        </View>
+
+        {searchVisible ? (
+          <View style={styles.searchInputWrap}>
+            <Search size={16} color={colors.muted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Cari nomor order..."
+              placeholderTextColor={colors.muted}
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        ) : null}
+
+        {/* Quick summary stats */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statsRow}
+        >
+          <StatPill
+            label={`${todayTransactions.length} Transaksi`}
+            dotColor={colors.primary}
+            textColor={colors.primary}
+            bgColor={colors.orangeBg}
+          />
+          <StatPill
+            label="Cashless"
+            dotColor={colors.success}
+            textColor={colors.success}
+            bgColor={colors.successBg}
+          />
+          <StatPill
+            label="Tunai"
+            dotColor={colors.info}
+            textColor={colors.info}
+            bgColor={colors.infoBg}
+          />
+        </ScrollView>
       </View>
 
+      {/* List transaksi */}
       <FlatList
-        data={filtered}
+        data={[...todayTransactions, ...yesterdayTransactions]}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          todayTransactions.length > 0 ? (
+            <ThemedText variant="micro" weight="bold" color="muted" uppercase style={styles.sectionLabel}>
+              Hari ini
+            </ThemedText>
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const isYesterday = item.day === "yesterday";
+          return (
+            <View>
+              {isYesterday ? (
+                <ThemedText variant="micro" weight="bold" color="muted" uppercase style={styles.sectionLabel}>
+                  Kemarin
+                </ThemedText>
+              ) : null}
+              {renderTransaction(item)}
+            </View>
+          );
+        }}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Tidak ada transaksi</Text>
-            <Text style={styles.emptySubtitle}>
-              Coba ubah filter atau kata kunci pencarian.
-            </Text>
+          <View style={styles.emptyWrap}>
+            <EmptyState
+              icon={SearchX}
+              title="Tidak ada riwayat"
+              subtitle="Coba ubah filter atau kata kunci pencarian Anda"
+            />
           </View>
         }
       />
@@ -166,151 +253,153 @@ export default function TransactionHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.bg,
   },
+
+  // Header
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    backgroundColor: colors.card,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#0F172A",
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
   },
-  subtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 4,
+  headerActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
   },
-  searchContainer: {
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchInputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: spacing.md,
+    height: 44,
   },
   searchInput: {
     flex: 1,
-    height: 44,
+    fontFamily: "PlusJakartaSans_500Medium",
     fontSize: 14,
-    color: "#0F172A",
+    color: colors.ink,
   },
-  filterRow: {
+
+  // Stats
+  statsRow: {
+    gap: spacing.md,
+  },
+  statPill: {
     flexDirection: "row",
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    gap: 8,
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.orangeBorder,
   },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#E2E8F0",
+  statDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
   },
-  filterChipActive: {
-    backgroundColor: "#4F46E5",
+
+  // List
+  listContent: {
+    padding: spacing.screen,
+    gap: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
-  filterChipText: {
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "600",
+  sectionLabel: {
+    marginBottom: spacing.sm,
+    letterSpacing: 1,
   },
-  filterChipTextActive: {
-    color: "#FFFFFF",
+  emptyWrap: {
+    marginTop: spacing.xxxl,
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-    gap: 12,
-  },
+
+  // Card transaksi
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.card,
+    gap: spacing.lg,
+    ...shadows.card,
+  },
+  cardPressed: {
+    transform: [{ scale: motion.pressScale }],
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "flex-start",
   },
-  trxId: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0F172A",
+  cardIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
   },
-  customer: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 2,
+  receiptIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  amountWrap: {
+  cardAmount: {
     alignItems: "flex-end",
-  },
-  amount: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0F172A",
+    gap: 4,
   },
   statusBadge: {
-    marginTop: 6,
-    borderRadius: 999,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
+    borderRadius: radius.xs,
   },
-  statusPaid: {
-    backgroundColor: "#D1FAE5",
+  statusSuccess: {
+    backgroundColor: colors.successBg,
   },
   statusRefunded: {
-    backgroundColor: "#FEE2E2",
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  statusTextPaid: {
-    color: "#065F46",
-  },
-  statusTextRefunded: {
-    color: "#991B1B",
+    backgroundColor: colors.dangerBg,
   },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  meta: {
-    fontSize: 12,
-    color: "#94A3B8",
-  },
-  emptyState: {
-    paddingTop: 60,
     alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    borderStyle: "dashed",
+    paddingTop: spacing.md,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 6,
+  methodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  emptySubtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    textAlign: "center",
-    paddingHorizontal: 24,
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: motion.pressScale }],
   },
 });

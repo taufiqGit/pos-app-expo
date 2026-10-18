@@ -1,199 +1,188 @@
+import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
+import { Plus } from "lucide-react-native";
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  ViewStyle,
-} from "react-native";
-
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  category?: string;
-  sku?: string;
-  stock?: number;
-  tax?: number;
-}
+import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { colors, motion, radius, shadows, spacing } from "@/theme";
+import { type Product, resolveUnitPrice } from "@/types";
+import { formatRupiah } from "@/utils/format";
 
 interface ProductCardProps {
   product: Product;
-  onPress: (product: Product) => void;
+  /** Dipanggil saat card atau tombol + ditekan */
+  onAdd: (product: Product) => void;
   style?: ViewStyle;
-  currency?: string;
-  showStock?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({
-  product,
-  onPress,
-  style,
-  currency = "$",
-  showStock = false,
-}) => {
-  const isOutOfStock = showStock && product.stock !== undefined && product.stock <= 0;
+/** Card produk gaya kasir.html — putih, radius 24, gambar, harga orange, tombol + dark. */
+export function ProductCard({ product, onAdd, style }: ProductCardProps) {
+  const outOfStock = product.stock !== undefined && product.stock <= 0;
+  /** Satuan default (is_default) dipakai sebagai harga utama card; kosong = base unit */
+  const defaultUnit = product.productUnits?.find((u) => u.is_default);
+  const displayPrice = resolveUnitPrice(product, defaultUnit);
+  const extraUnits = product.productUnits?.length ?? 0;
+
+  const handleAdd = () => {
+    if (!outOfStock) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onAdd(product);
+    }
+  };
 
   return (
-    <TouchableOpacity
-      style={[styles.card, isOutOfStock && styles.cardDisabled, style]}
-      onPress={() => !isOutOfStock && onPress(product)}
-      activeOpacity={isOutOfStock ? 1 : 0.7}
-      accessible
-      accessibilityLabel={`${product.name}, ${currency}${product.price.toFixed(2)}`}
+    <Pressable
+      onPress={handleAdd}
       accessibilityRole="button"
+      accessibilityLabel={`${product.name}, ${formatRupiah(product.price)}${outOfStock ? ", stok habis" : ""}`}
+      accessibilityState={{ disabled: outOfStock }}
+      style={({ pressed }) => [
+        styles.card,
+        outOfStock && styles.cardDisabled,
+        pressed && styles.cardPressed,
+        style,
+      ]}
     >
-      {/* Product Image */}
-      <View style={styles.imageContainer}>
-        {product.image ? (
-          <Image
-            source={{ uri: product.image }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.imagePlaceholderText}>
-              {product.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
-
-        {isOutOfStock && (
-          <View style={styles.outOfStockOverlay}>
-            <Text style={styles.outOfStockText}>Out of Stock</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Product Info */}
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={2}>
-          {product.name}
-        </Text>
-
-        {product.sku && (
-          <Text style={styles.sku} numberOfLines={1}>
-            SKU: {product.sku}
-          </Text>
-        )}
-
-        <View style={styles.footer}>
-          <Text style={styles.price}>
-            {currency}
-            {product.price.toFixed(2)}
-          </Text>
-
-          {showStock && product.stock !== undefined && (
-            <Text
-              style={[
-                styles.stock,
-                product.stock <= 5 && product.stock > 0 && styles.stockLow,
-                product.stock <= 0 && styles.stockEmpty,
-              ]}
-            >
-              {product.stock > 0 ? `${product.stock} left` : "0"}
-            </Text>
-          )}
+      {product.discount ? (
+        <View style={styles.discountBadge}>
+          <ThemedText variant="micro" weight="bold" color="white">
+            -{product.discount}%
+          </ThemedText>
         </View>
+      ) : null}
+
+      {extraUnits > 0 ? (
+        <View style={styles.unitBadge}>
+          <ThemedText variant="micro" weight="bold" color="white">
+            +{extraUnits} satuan
+          </ThemedText>
+        </View>
+      ) : null}
+
+      {product.image ? (
+        <Image
+          source={{ uri: product.image }}
+          style={styles.image}
+          contentFit="cover"
+          transition={motion.fadeDuration}
+        />
+      ) : (
+        <View style={[styles.image, styles.imagePlaceholder]}>
+          <ThemedText
+            variant="hero"
+            weight="bold"
+            color="faint"
+          >
+            {product.name.charAt(0).toUpperCase()}
+          </ThemedText>
+        </View>
+      )}
+
+      <ThemedText variant="xs" weight="bold" color="ink" style={styles.name} numberOfLines={2}>
+        {product.name}
+      </ThemedText>
+
+      {product.subtitle ? (
+        <ThemedText variant="micro" color="muted" style={styles.subtitle} numberOfLines={1}>
+          {product.subtitle}
+        </ThemedText>
+      ) : null}
+
+      <View style={styles.footer}>
+        <ThemedText variant="xs" weight="bold" color="primary" numberOfLines={1} style={styles.price}>
+          {formatRupiah(displayPrice)}
+        </ThemedText>
+        <Pressable
+          onPress={handleAdd}
+          disabled={outOfStock}
+          accessibilityRole="button"
+          accessibilityLabel={`Tambah ${product.name} ke keranjang`}
+          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+        >
+          <Plus size={14} color={colors.white} strokeWidth={2.6} />
+        </Pressable>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
-};
+}
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-    margin: 6,
     flex: 1,
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing.card,
+    ...shadows.card,
+  },
+  cardPressed: {
+    transform: [{ scale: motion.pressScale }],
   },
   cardDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
-  imageContainer: {
-    width: "100%",
-    aspectRatio: 1,
-    backgroundColor: "#F3F4F6",
-    position: "relative",
+  discountBadge: {
+    position: "absolute",
+    top: spacing.md,
+    left: spacing.md,
+    backgroundColor: colors.danger,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 1,
+    zIndex: 1,
+  },
+  unitBadge: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 1,
+    zIndex: 1,
   },
   image: {
-    width: "100%",
-    height: "100%",
+    width: 96,
+    height: 96,
+    borderRadius: radius.lg,
+    marginBottom: spacing.md,
   },
   imagePlaceholder: {
-    width: "100%",
-    height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E5E7EB",
-  },
-  imagePlaceholderText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#9CA3AF",
-  },
-  outOfStockOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  outOfStockText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  info: {
-    padding: 10,
-    gap: 4,
+    backgroundColor: colors.surfaceMuted,
   },
   name: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#111827",
-    lineHeight: 18,
+    textAlign: "center",
+    alignSelf: "stretch",
+    marginBottom: 2,
   },
-  sku: {
-    fontSize: 10,
-    color: "#9CA3AF",
+  subtitle: {
+    textAlign: "center",
+    marginBottom: spacing.sm,
   },
   footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 4,
+    alignSelf: "stretch",
+    marginTop: "auto",
   },
   price: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2563EB",
+    flexShrink: 1,
   },
-  stock: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: "#6B7280",
+  addButton: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    backgroundColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  stockLow: {
-    color: "#D97706",
-  },
-  stockEmpty: {
-    color: "#EF4444",
+  addButtonPressed: {
+    opacity: 0.85,
+    transform: [{ scale: motion.pressScaleStrong }],
   },
 });
-
-export default ProductCard;

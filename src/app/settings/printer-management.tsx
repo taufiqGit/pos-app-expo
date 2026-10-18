@@ -8,8 +8,9 @@ import {
   FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { ChevronLeft, Plus } from "lucide-react-native";
+import { colors, radius, shadows, spacing } from "@/theme";
 
 type Printer = {
   id: string;
@@ -61,7 +62,7 @@ export default function PrinterManagementScreen() {
                   : styles.statusTextDisconnected,
               ]}
             >
-              {isConnected ? "Terhubung" : "Terputus"}
+              {isConnected ? "TERHUBUNG" : "TERPUTUS"}
             </Text>
           </View>
         </View>
@@ -90,12 +91,13 @@ export default function PrinterManagementScreen() {
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
-            <Ionicons name="chevron-back" size={20} color="#0F172A" />
+            <ChevronLeft size={20} color={colors.ink} />
           </TouchableOpacity>
           <Text style={styles.title}>Manajemen Printer</Text>
         </View>
         <TouchableOpacity style={styles.addButton} activeOpacity={0.85}>
-          <Text style={styles.addButtonText}>+ Tambah</Text>
+          <Plus size={16} color={colors.white} />
+          <Text style={styles.addButtonText}>Tambah</Text>
         </TouchableOpacity>
       </View>
 
@@ -109,8 +111,8 @@ export default function PrinterManagementScreen() {
         <Switch
           value={autoPrint}
           onValueChange={setAutoPrint}
-          trackColor={{ false: "#E2E8F0", true: "#C7D2FE" }}
-          thumbColor={autoPrint ? "#4F46E5" : "#94A3B8"}
+          trackColor={{ false: colors.lineStrong, true: colors.primary }}
+          thumbColor={colors.white}
         />
       </View>
 
@@ -128,14 +130,14 @@ export default function PrinterManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.bg,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: spacing.screen,
+    paddingVertical: spacing.md,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: colors.line,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -143,70 +145,75 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: spacing.md,
   },
   backButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.surfaceMuted,
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
   },
   addButton: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: colors.ink,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: radius.md,
   },
   addButtonText: {
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: "PlusJakartaSans_600SemiBold",
     fontWeight: "600",
     fontSize: 13,
   },
   settingCard: {
-    margin: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
+    marginHorizontal: spacing.screen,
+    marginTop: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.card,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.card,
   },
   settingTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
     marginBottom: 2,
   },
   settingSubtitle: {
     fontSize: 12,
-    color: "#64748B",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
   },
   list: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
   },
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.card,
   },
   cardHeader: {
     flexDirection: "row",
@@ -217,58 +224,65 @@ const styles = StyleSheet.create({
   printerName: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
   },
   printerMeta: {
     fontSize: 12,
-    color: "#64748B",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
     marginTop: 2,
   },
   statusBadge: {
-    borderRadius: 999,
+    borderRadius: radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   statusConnected: {
-    backgroundColor: "#DCFCE7",
+    backgroundColor: colors.successBg,
   },
   statusDisconnected: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerBg,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: "PlusJakartaSans_700Bold",
   },
   statusTextConnected: {
-    color: "#166534",
+    color: colors.success,
   },
   statusTextDisconnected: {
-    color: "#991B1B",
+    color: colors.dangerText,
   },
   cardActions: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   primaryButton: {
-    backgroundColor: "#4F46E5",
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    flex: 1,
+    backgroundColor: colors.ink,
+    borderRadius: radius.md,
     paddingVertical: 8,
+    alignItems: "center",
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: colors.white,
+    fontFamily: "PlusJakartaSans_600SemiBold",
     fontWeight: "600",
     fontSize: 12,
   },
   secondaryButton: {
-    backgroundColor: "#E2E8F0",
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    flex: 1,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
     paddingVertical: 8,
+    alignItems: "center",
   },
   secondaryButtonText: {
-    color: "#0F172A",
+    color: colors.inkSoft,
+    fontFamily: "PlusJakartaSans_600SemiBold",
     fontWeight: "600",
     fontSize: 12,
   },

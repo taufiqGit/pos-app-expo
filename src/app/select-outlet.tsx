@@ -3,14 +3,15 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Pressable,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { CheckCircle2, Store } from "lucide-react-native";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { colors, radius, shadows, spacing } from "@/theme";
 import { outletService, Outlet } from "../services/outletService";
 import { useOutletStore } from "../store/outletStore";
 
@@ -21,7 +22,7 @@ export default function SelectOutletScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(
     selectedOutlet?.id ?? null,
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selected = useMemo(
@@ -29,7 +30,28 @@ export default function SelectOutletScreen() {
     [outlets, selectedId],
   );
 
-  const loadOutlets = async () => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await outletService.getOutlets();
+        if (!cancelled) setOutlets(response?.data ?? []);
+      } catch (error: any) {
+        if (!cancelled) {
+          setErrorMessage(
+            error?.message ?? "Gagal memuat outlet. Silakan coba lagi.",
+          );
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleRetry = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -43,10 +65,6 @@ export default function SelectOutletScreen() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadOutlets();
-  }, []);
 
   const handleSelect = () => {
     if (!selected) {
@@ -63,33 +81,41 @@ export default function SelectOutletScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Pilih Outlet</Text>
-        <Text style={styles.subtitle}>
+        <ThemedText variant="xl" weight="bold" color="ink">
+          Pilih Outlet
+        </ThemedText>
+        <ThemedText variant="xs" color="textSecondary">
           Anda wajib memilih outlet sebelum melanjutkan
-        </Text>
+        </ThemedText>
       </View>
 
       <View style={styles.body}>
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FF6B35" />
-            <Text style={styles.loadingText}>Memuat daftar outlet.. oii.</Text>
+          <View style={styles.stateContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <ThemedText variant="sm" color="textSecondary">
+              Memuat daftar outlet...
+            </ThemedText>
           </View>
         ) : errorMessage ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={loadOutlets}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.retryText}>Coba Lagi</Text>
-            </TouchableOpacity>
+          <View style={styles.stateContainer}>
+            <ThemedText variant="sm" color="dangerText" style={styles.errorText}>
+              {errorMessage}
+            </ThemedText>
+            <Pressable style={styles.retryButton} onPress={handleRetry}>
+              <ThemedText variant="sm" weight="bold" color="white">
+                Coba Lagi
+              </ThemedText>
+            </Pressable>
           </View>
         ) : outlets.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyText}>Outlet belum tersedia</Text>
+          <View style={styles.stateContainer}>
+            <View style={styles.emptyIcon}>
+              <Store size={32} color={colors.muted} />
+            </View>
+            <ThemedText variant="sm" color="muted">
+              Outlet belum tersedia
+            </ThemedText>
           </View>
         ) : (
           <FlatList
@@ -99,29 +125,28 @@ export default function SelectOutletScreen() {
             renderItem={({ item }) => {
               const isSelected = item.id === selectedId;
               return (
-                <TouchableOpacity
+                <Pressable
                   style={[
                     styles.outletCard,
                     isSelected && styles.outletCardSelected,
                   ]}
                   onPress={() => setSelectedId(item.id)}
-                  activeOpacity={0.85}
                 >
                   <View style={styles.outletInfo}>
-                    <Text style={styles.outletName}>{item.name}</Text>
-                    <Text style={styles.outletMeta}>{item.code}</Text>
-                    <Text style={styles.outletAddress} numberOfLines={2}>
+                    <ThemedText variant="sm" weight="bold" color="ink">
+                      {item.name}
+                    </ThemedText>
+                    <ThemedText variant="micro" weight="medium" color="textSecondary">
+                      {item.code}
+                    </ThemedText>
+                    <ThemedText variant="micro" color="muted" numberOfLines={2}>
                       {item.address}
-                    </Text>
+                    </ThemedText>
                   </View>
                   {isSelected && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color="#16A34A"
-                    />
+                    <CheckCircle2 size={24} color={colors.success} />
                   )}
-                </TouchableOpacity>
+                </Pressable>
               );
             }}
           />
@@ -129,14 +154,19 @@ export default function SelectOutletScreen() {
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.primaryButton, !selected && styles.primaryDisabled]}
+        <Pressable
+          style={({ pressed }) => [
+            styles.primaryButton,
+            !selected && styles.primaryDisabled,
+            pressed && selected && styles.primaryPressed,
+          ]}
           onPress={handleSelect}
-          activeOpacity={0.85}
           disabled={!selected}
         >
-          <Text style={styles.primaryText}>Pilih Outlet</Text>
-        </TouchableOpacity>
+          <ThemedText variant="sm" weight="bold" color="white">
+            Pilih Outlet
+          </ThemedText>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -145,128 +175,85 @@ export default function SelectOutletScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: colors.bg,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 4,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: 2,
   },
   body: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.md,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
   },
   outletCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.card,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.cardBorder,
+    ...shadows.card,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   outletCardSelected: {
-    borderColor: "#16A34A",
-    backgroundColor: "#F0FDF4",
+    borderColor: colors.success,
+    backgroundColor: colors.successBg,
   },
   outletInfo: {
     flex: 1,
-    paddingRight: 12,
+    paddingRight: spacing.md,
+    gap: 2,
   },
-  outletName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 4,
-  },
-  outletMeta: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#6B7280",
-    marginBottom: 6,
-  },
-  outletAddress: {
-    fontSize: 12,
-    color: "#9CA3AF",
-  },
-  loadingContainer: {
+  stateContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
   },
-  loadingText: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  errorContainer: {
-    flex: 1,
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 12,
   },
   errorText: {
-    fontSize: 14,
-    color: "#DC2626",
     textAlign: "center",
   },
   retryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#FF6B35",
-  },
-  retryText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#9CA3AF",
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.ink,
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    paddingTop: 8,
-    backgroundColor: "#F9FAFB",
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.xxl,
+    paddingTop: spacing.md,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: colors.line,
   },
   primaryButton: {
-    backgroundColor: "#FF6B35",
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: colors.ink,
+    borderRadius: radius.md,
+    paddingVertical: spacing.card,
     alignItems: "center",
   },
   primaryDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
-  primaryText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 15,
+  primaryPressed: {
+    opacity: 0.85,
   },
 });

@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, radius, shadows, spacing } from "@/theme";
 import { authService } from "../../services/authService";
 
 export default function LoginScreen() {
@@ -90,13 +91,13 @@ export default function LoginScreen() {
               <Ionicons
                 name="person-outline"
                 size={20}
-                color="#9CA3AF"
+                color={colors.muted}
                 style={styles.inputIcon}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Email / Username / Staff ID"
-                placeholderTextColor="#D1D5DB"
+                placeholderTextColor={colors.muted}
                 value={identifier}
                 onChangeText={setIdentifier}
                 autoCapitalize="none"
@@ -113,13 +114,13 @@ export default function LoginScreen() {
               <Ionicons
                 name="lock-closed-outline"
                 size={20}
-                color="#9CA3AF"
+                color={colors.muted}
                 style={styles.inputIcon}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Kata Sandi"
-                placeholderTextColor="#D1D5DB"
+                placeholderTextColor={colors.muted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -134,7 +135,7 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? "eye-outline" : "eye-off-outline"}
                   size={20}
-                  color="#9CA3AF"
+                  color={colors.muted}
                 />
               </TouchableOpacity>
             </View>
@@ -151,7 +152,7 @@ export default function LoginScreen() {
                 style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
               >
                 {rememberMe && (
-                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  <Ionicons name="checkmark" size={14} color={colors.white} />
                 )}
               </View>
               <Text style={styles.checkboxLabel}>Ingat Saya</Text>
@@ -173,7 +174,7 @@ export default function LoginScreen() {
             disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.loginButtonText}>Masuk</Text>
             )}
@@ -199,11 +200,11 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: colors.bg,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.screen,
     paddingTop: 40,
     paddingBottom: 40,
   },
@@ -226,37 +227,38 @@ const styles = StyleSheet.create({
   gridCell: {
     width: 12,
     height: 12,
-    backgroundColor: "#FF6B35",
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   logoText: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#FF6B35",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.primary,
     letterSpacing: -0.5,
   },
   title: {
     fontSize: 32,
     fontWeight: "700",
-    color: "#4B5563",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.ink,
     textAlign: "center",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: "#9CA3AF",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
     textAlign: "center",
     marginBottom: 32,
   },
   formContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadows.card,
     marginBottom: 24,
   },
   inputGroup: {
@@ -265,19 +267,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
+    fontFamily: "PlusJakartaSans_600SemiBold",
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   required: {
-    color: "#FF6B35",
+    color: colors.primary,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.lineStrong,
     paddingHorizontal: 14,
     height: 52,
   },
@@ -287,7 +290,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: "#1F2937",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.ink,
     paddingVertical: 0,
   },
   eyeIcon: {
@@ -309,39 +313,37 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: "#D1D5DB",
+    borderColor: colors.lineStrong,
     marginRight: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   checkboxChecked: {
-    backgroundColor: "#FF6B35",
-    borderColor: "#FF6B35",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: "#6B7280",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
   },
   forgotPassword: {
     fontSize: 14,
-    color: "#FF6B35",
+    color: colors.primary,
+    fontFamily: "PlusJakartaSans_500Medium",
     fontWeight: "500",
   },
   loginButton: {
-    backgroundColor: "#FF6B35",
-    borderRadius: 12,
+    backgroundColor: colors.ink,
+    borderRadius: radius.md,
     paddingVertical: 16,
     alignItems: "center",
-    shadowColor: "#FF6B35",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   loginButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: colors.white,
     letterSpacing: 0.5,
   },
   loginButtonDisabled: {
@@ -353,10 +355,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: "#6B7280",
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
   },
   footerLink: {
-    color: "#FF6B35",
+    color: colors.primary,
+    fontFamily: "PlusJakartaSans_600SemiBold",
     fontWeight: "600",
   },
   activationLink: {
@@ -364,7 +368,8 @@ const styles = StyleSheet.create({
   },
   activationLinkText: {
     fontSize: 14,
-    color: "#3B82F6",
+    color: colors.info,
+    fontFamily: "PlusJakartaSans_600SemiBold",
     fontWeight: "600",
   },
 });

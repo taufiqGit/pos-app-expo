@@ -1,0 +1,198 @@
+Page: SmartPOS - Order Review
+
+```html
+<!DOCTYPE html><html lang="en" class="h-full"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SmartPOS - Order Review</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    :root {
+      --primary: #F49E4A;
+      --primary-dark: #E88D36;
+      --bg-cream: #F5F1E8;
+      --card-bg: #FFFFFF;
+    }
+  </style>
+  <style>sd-component { display: block; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js" defer init></script>
+</head>
+<body>
+  <div class="flex flex-col h-screen bg-[#F5F1E8]" data-sd-id="1">
+    <!-- Mobile Header -->
+    <header class="shrink-0 pt-14 px-5 pb-4 bg-white/80 backdrop-blur-md sticky top-0 z-40" data-sd-id="2">
+      <div class="flex items-center gap-4" data-sd-id="3">
+        <a href="https://draft-f8d381fd-b32d-4636-ba93-90c839285456.preview.superdesign.dev" id="back-to-cashier" class="p-2 rounded-xl bg-gray-100 flex items-center justify-center" data-sd-id="4">
+          <iconify-icon icon="lucide:chevron-left" class="text-xl text-gray-700"></iconify-icon>
+        </a>
+        <h1 class="text-lg font-bold text-gray-900" data-sd-id="5">Order Review</h1>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-5 py-4 space-y-4" data-sd-id="6">
+      <!-- Order Item 1 -->
+      <div class="bg-white rounded-[24px] p-4 shadow-sm border border-orange-50/50" data-sd-id="7">
+        <div class="flex gap-4" data-sd-id="8">
+          <img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&amp;auto=format&amp;fit=crop&amp;q=60" alt="Ramen" class="w-20 h-20 object-cover rounded-2xl shadow-sm" data-sd-id="9">
+          <div class="flex-1" data-sd-id="10">
+            <h3 class="text-sm font-bold text-gray-800 leading-tight" data-sd-id="11">Noodles Ramen</h3>
+            <p class="text-[10px] text-gray-400 mb-2" data-sd-id="12">Spicy Beef Base</p>
+            <div class="flex items-center justify-between" data-sd-id="13">
+              <span class="text-sm font-bold text-[#F49E4A]" data-sd-id="14">$ 5.35</span>
+              <div class="flex items-center bg-gray-100 rounded-lg p-1 gap-3" data-sd-id="15">
+                <button class="w-6 h-6 rounded-md bg-white flex items-center justify-center shadow-sm" data-sd-id="16">
+                  <iconify-icon icon="lucide:minus" class="text-xs text-gray-500"></iconify-icon>
+                </button>
+                <span class="text-xs font-bold w-4 text-center" data-sd-id="17">1</span>
+                <button class="w-6 h-6 rounded-md bg-[#F49E4A] flex items-center justify-center shadow-sm" data-sd-id="18">
+                  <iconify-icon icon="lucide:plus" class="text-xs text-white"></iconify-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Add-ons Selection -->
+        <div class="mt-4 pt-4 border-t border-dashed border-gray-100" data-sd-id="19">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2" data-sd-id="20">Extras Provided</p>
+          <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl" data-sd-id="21">
+            <div class="flex items-center gap-2" data-sd-id="22">
+              <iconify-icon icon="emojione:chili-pepper" class="text-sm"></iconify-icon>
+              <span class="text-xs font-medium text-gray-700" data-sd-id="23">Spicy Level</span>
+            </div>
+            <div class="flex items-center gap-1 text-[#F49E4A] font-semibold text-xs" data-sd-id="24">
+              Medium
+              <iconify-icon icon="lucide:chevron-down"></iconify-icon>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Item 2 -->
+      <div class="bg-white rounded-[24px] p-4 shadow-sm border border-orange-50/50" data-sd-id="25">
+        <div class="flex gap-4" data-sd-id="26">
+          <img src="https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&amp;auto=format&amp;fit=crop&amp;q=60" alt="Burger" class="w-20 h-20 object-cover rounded-2xl shadow-sm" data-sd-id="27">
+          <div class="flex-1" data-sd-id="28">
+            <h3 class="text-sm font-bold text-gray-800 leading-tight" data-sd-id="29">Beef Burger</h3>
+            <p class="text-[10px] text-gray-400 mb-2" data-sd-id="30">Selected Meat Specials</p>
+            <div class="flex items-center justify-between" data-sd-id="31">
+              <span class="text-sm font-bold text-[#F49E4A]" data-sd-id="32">$ 4.50</span>
+              <div class="flex items-center bg-gray-100 rounded-lg p-1 gap-3" data-sd-id="33">
+                <button class="w-6 h-6 rounded-md bg-white flex items-center justify-center shadow-sm" data-sd-id="34">
+                  <iconify-icon icon="lucide:minus" class="text-xs text-gray-500"></iconify-icon>
+                </button>
+                <span class="text-xs font-bold w-4 text-center" data-sd-id="35">1</span>
+                <button class="w-6 h-6 rounded-md bg-[#F49E4A] flex items-center justify-center shadow-sm" data-sd-id="36">
+                  <iconify-icon icon="lucide:plus" class="text-xs text-white"></iconify-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Summary -->
+      <div class="bg-white rounded-[24px] p-6 shadow-sm border border-orange-50/50" data-sd-id="37">
+        <h3 class="text-sm font-bold text-gray-900 mb-4" data-sd-id="38">Order Summary</h3>
+        <div class="space-y-3" data-sd-id="39">
+          <div class="flex justify-between text-xs" data-sd-id="40">
+            <span class="text-gray-400" data-sd-id="41">Item total</span>
+            <span class="font-semibold text-gray-800" data-sd-id="42">$9.85</span>
+          </div>
+          <div class="flex justify-between text-xs" data-sd-id="43">
+            <span class="text-gray-400" data-sd-id="44">Discount</span>
+            <span class="font-semibold text-red-500" data-sd-id="45">-$2.20</span>
+          </div>
+          <div class="flex justify-between text-xs" data-sd-id="46">
+            <span class="text-gray-400" data-sd-id="47">Tax</span>
+            <span class="font-semibold text-gray-800" data-sd-id="48">Free</span>
+          </div>
+          <div class="pt-3 border-t border-dashed border-gray-100 flex justify-between items-center" data-sd-id="49">
+            <span class="text-sm font-bold text-gray-900" data-sd-id="50">Total</span>
+            <span class="text-lg font-bold text-[#F49E4A]" data-sd-id="51">$ 7.65</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pb-24" data-sd-id="52">
+        <a href="https://draft-7dbf5cf3-0948-47be-82cc-04cdda105337.preview.superdesign.dev" id="proceed-to-payment" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl active:scale-[0.98] transition-all" data-sd-id="53">
+          Proceed Transactions
+        </a>
+      </div>
+    </main>
+
+    <!-- Mobile Navigation Bar -->
+    <footer class="shrink-0 bg-white border-t border-gray-100 pb-[34px] pt-4 px-6 z-40" data-sd-id="54">
+      <!-- component: NavigationBar (2d89dea8-b4f1-470e-922a-307d4063064d) -->
+<div v-scope="{ ...{&quot;activeItem&quot;:&quot;kasir&quot;,&quot;kasirHref&quot;:&quot;#kasir&quot;,&quot;draftHref&quot;:&quot;#draft&quot;,&quot;salesHref&quot;:&quot;#sales&quot;,&quot;shiftHref&quot;:&quot;#shift&quot;,&quot;settingsHref&quot;:&quot;#settings&quot;}, $emit() {} }">
+<nav class="flex justify-between items-center bg-white border-t border-gray-100 pb-[34px] pt-4 px-6 w-full">
+  <!-- Kasir Tab -->
+  <a :href="kasirHref" 
+     class="flex flex-col items-center gap-1 relative"
+     :class="activeItem === 'kasir' ? 'text-[#F49E4A]' : 'text-gray-400'">
+    <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+    <span class="text-[10px]" :class="activeItem === 'kasir' ? 'font-bold' : 'font-medium'">Kasir</span>
+    <div v-if="activeItem === 'kasir'" class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#F49E4A]"></div>
+  </a>
+
+  <!-- Draft Tab -->
+  <a :href="draftHref" 
+     class="flex flex-col items-center gap-1 relative"
+     :class="activeItem === 'draft' ? 'text-[#F49E4A]' : 'text-gray-400'">
+    <iconify-icon icon="lucide:save" class="text-xl"></iconify-icon>
+    <span class="text-[10px]" :class="activeItem === 'draft' ? 'font-bold' : 'font-medium'">Draft</span>
+    <div v-if="activeItem === 'draft'" class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#F49E4A]"></div>
+  </a>
+
+  <!-- Sales Tab -->
+  <a :href="salesHref" 
+     class="flex flex-col items-center gap-1 relative"
+     :class="activeItem === 'sales' ? 'text-[#F49E4A]' : 'text-gray-400'">
+    <iconify-icon icon="lucide:history" class="text-xl"></iconify-icon>
+    <span class="text-[10px]" :class="activeItem === 'sales' ? 'font-bold' : 'font-medium'">Sales</span>
+    <div v-if="activeItem === 'sales'" class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#F49E4A]"></div>
+  </a>
+
+  <!-- Shift Tab -->
+  <a :href="shiftHref" 
+     class="flex flex-col items-center gap-1 relative"
+     :class="activeItem === 'shift' ? 'text-[#F49E4A]' : 'text-gray-400'">
+    <iconify-icon icon="lucide:clock-3" class="text-xl"></iconify-icon>
+    <span class="text-[10px]" :class="activeItem === 'shift' ? 'font-bold' : 'font-medium'">Shift</span>
+    <div v-if="activeItem === 'shift'" class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#F49E4A]"></div>
+  </a>
+
+  <!-- Setting Tab -->
+  <a :href="settingsHref" 
+     class="flex flex-col items-center gap-1 relative"
+     :class="activeItem === 'settings' ? 'text-[#F49E4A]' : 'text-gray-400'">
+    <iconify-icon icon="lucide:settings-2" class="text-xl"></iconify-icon>
+    <span class="text-[10px]" :class="activeItem === 'settings' ? 'font-bold' : 'font-medium'">Setting</span>
+    <div v-if="activeItem === 'settings'" class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#F49E4A]"></div>
+  </a>
+</nav>
+</div>
+<!-- /component: NavigationBar (2d89dea8-b4f1-470e-922a-307d4063064d) -->
+    </footer>
+  </div>
+</body></html>
+```
+
+Please reference this design and implement it into our codebase; Try to understand the structure, which part of our codebase is relevant and implement

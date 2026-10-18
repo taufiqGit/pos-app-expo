@@ -1,14 +1,9 @@
 import { create } from 'zustand';
+import { CartItem } from '../types/cart';
 
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-  sku?: string;
-  tax?: number;
-  discount?: number;
+/** Composite id: beda satuan = baris cart berbeda, tidak di-merge */
+export function cartLineId(productId: string, productUnitId?: string | null): string {
+  return `${productId}:${productUnitId ?? 'base'}`;
 }
 
 interface CartState {
@@ -22,10 +17,11 @@ interface CartState {
   taxTotal: () => number;
   discountTotal: () => number;
   grandTotal: () => number;
+  /** Jumlah baris (bukan total qty) — ringkas utk multi-satuan */
   itemCount: () => number;
 
   // Actions
-  addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
+  addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -69,25 +65,27 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   itemCount: () => {
-    return get().items.reduce((sum, item) => sum + item.quantity, 0);
+    return get().items.length;
   },
 
   // Actions
-  addItem: (newItem, quantity = 1) => {
+  addItem: (newItem) => {
     set((state) => {
       const existing = state.items.find((i) => i.id === newItem.id);
       if (existing) {
         return {
           items: state.items.map((i) =>
-            i.id === newItem.id ? { ...i, quantity: i.quantity + quantity } : i
+            i.id === newItem.id
+              ? { ...i, quantity: i.quantity + newItem.quantity, baseQty: (i.baseQty ?? i.quantity) + (newItem.baseQty ?? newItem.quantity) }
+              : i
           ),
         };
       }
-      return { items: [...state.items, { ...newItem, quantity }] };
+      return { items: [...state.items, newItem] };
     });
   },
 
-  removeItem: (id) => {
+  removeItem: (id: string) => {
     set((state) => ({
       items: state.items.filter((i) => i.id !== id),
     }));
@@ -99,9 +97,16 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
     set((state) => ({
-      items: state.items.map((i) =>
-        i.id === id ? { ...i, quantity } : i
-      ),
+      items: state.items.map((i) => {
+        if (i.id !== id) return i;
+        // Skala ulang baseQty proporsional dengan perubahan qty
+        const factor = i.baseQty !== undefined && i.quantity > 0 ? i.baseQty / i.quantity : undefined;
+        return {
+          ...i,
+          quantity,
+          baseQty: factor !== undefined ? Math.round(factor * quantity * 1000) / 1000 : undefined,
+        };
+      }),
     }));
   },
 

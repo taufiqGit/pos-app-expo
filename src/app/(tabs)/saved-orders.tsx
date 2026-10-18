@@ -1,185 +1,241 @@
 import React, { useMemo, useState } from "react";
+import { Image } from "expo-image";
 import {
-  View,
-  Text,
+  Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
-  FlatList,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Archive,
+  ArrowRight,
+  Filter,
+  Search,
+  ShoppingBag,
+  Trash2,
+} from "lucide-react-native";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ThemedText } from "@/components/ui/ThemedText";
+import { colors, radius, shadows, spacing } from "@/theme";
+import { formatRupiah } from "@/utils/format";
+
+type OrderType = "dine-in" | "take-away";
 
 type SavedOrder = {
   id: string;
-  name: string;
-  customer?: string;
-  total: number;
+  customer: string;
+  time: string;
+  type: OrderType;
+  items: string[]; // url gambar item (avatar stack)
   itemCount: number;
-  updatedAt: string;
-  status: "draft" | "hold";
+  total: number;
 };
 
 const MOCK_ORDERS: SavedOrder[] = [
   {
-    id: "SO-1023",
-    name: "Pesanan Meja 3",
-    customer: "Walk-in",
-    total: 125000,
-    itemCount: 4,
-    updatedAt: "2 menit lalu",
-    status: "hold",
-  },
-  {
-    id: "SO-1022",
-    name: "Pesanan Online",
-    customer: "Budi",
-    total: 86000,
+    id: "DF-2024",
+    customer: "Meja 08",
+    time: "14:20 WIB",
+    type: "dine-in",
+    items: [
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=100&fit=crop",
+      "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=100&fit=crop",
+    ],
     itemCount: 3,
-    updatedAt: "10 menit lalu",
-    status: "draft",
+    total: 295000,
   },
   {
-    id: "SO-1021",
-    name: "Pesanan Takeaway",
-    customer: "Sari",
-    total: 52000,
+    id: "DF-2023",
+    customer: "Walk-in Customer",
+    time: "13:45 WIB",
+    type: "take-away",
+    items: [
+      "https://images.unsplash.com/photo-1544145945-f904253d0c7e?w=100&fit=crop",
+    ],
+    itemCount: 1,
+    total: 28000,
+  },
+  {
+    id: "DF-2022",
+    customer: "Meja 12",
+    time: "12:10 WIB",
+    type: "dine-in",
+    items: [
+      "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=100&fit=crop",
+      "https://images.unsplash.com/photo-1534422298391-e4f8c170db76?w=100&fit=crop",
+    ],
+    itemCount: 4,
+    total: 512000,
+  },
+  {
+    id: "DF-2021",
+    customer: "Meja 05",
+    time: "11:32 WIB",
+    type: "dine-in",
+    items: [
+      "https://images.unsplash.com/photo-1559703248-dcaaec9fab78?w=100&fit=crop",
+    ],
     itemCount: 2,
-    updatedAt: "25 menit lalu",
-    status: "hold",
+    total: 118000,
   },
 ];
 
-const STATUS_LABEL: Record<SavedOrder["status"], string> = {
-  draft: "Draft",
-  hold: "Hold",
+const TYPE_META: Record<OrderType, { label: string; bg: string; fg: string }> = {
+  "dine-in": { label: "DINE-IN", bg: colors.infoBg, fg: colors.info },
+  "take-away": { label: "TAKE-AWAY", bg: colors.orangeBg, fg: colors.primary },
 };
 
 export default function SavedOrdersScreen() {
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "hold">(
-    "all",
-  );
+  const [showSearch, setShowSearch] = useState(false);
 
   const filteredOrders = useMemo(() => {
-    return MOCK_ORDERS.filter((order) => {
-      const matchesSearch =
-        order.name.toLowerCase().includes(search.toLowerCase()) ||
-        order.id.toLowerCase().includes(search.toLowerCase()) ||
-        order.customer?.toLowerCase().includes(search.toLowerCase());
-      const matchesFilter =
-        activeFilter === "all" || order.status === activeFilter;
-      return matchesSearch && matchesFilter;
-    });
-  }, [search, activeFilter]);
+    if (!search.trim()) return MOCK_ORDERS;
+    const q = search.toLowerCase();
+    return MOCK_ORDERS.filter(
+      (order) =>
+        order.id.toLowerCase().includes(q) ||
+        order.customer.toLowerCase().includes(q),
+    );
+  }, [search]);
+
+  const activeCount = MOCK_ORDERS.length;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Pesanan Tersimpan</Text>
-          <Text style={styles.subtitle}>
-            Kelola pesanan yang belum diselesaikan
-          </Text>
+        <View style={styles.headerLeft}>
+          <ThemedText variant="xl" weight="bold" color="ink">
+            Pesanan Tersimpan
+          </ThemedText>
+          <ThemedText variant="micro" color="muted" uppercase>
+            {activeCount} Draf Aktif
+          </ThemedText>
         </View>
-        <TouchableOpacity style={styles.addButton} activeOpacity={0.85}>
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-          <Text style={styles.addButtonText}>Baru</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={18} color="#94A3B8" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Cari pesanan..."
-          placeholderTextColor="#94A3B8"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      <View style={styles.filterRow}>
-        {(["all", "draft", "hold"] as const).map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterChip,
-              activeFilter === filter && styles.filterChipActive,
-            ]}
-            onPress={() => setActiveFilter(filter)}
+        <View style={styles.headerActions}>
+          <Pressable style={styles.iconButton}>
+            <Filter size={18} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            style={[styles.iconButton, showSearch && styles.iconButtonActive]}
+            onPress={() => {
+              setShowSearch((v) => !v);
+              if (showSearch) setSearch("");
+            }}
           >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeFilter === filter && styles.filterChipTextActive,
-              ]}
-            >
-              {filter === "all" ? "Semua" : STATUS_LABEL[filter]}
-            </Text>
-          </TouchableOpacity>
-        ))}
+            <Search
+              size={18}
+              color={showSearch ? colors.ink : colors.textSecondary}
+            />
+          </Pressable>
+        </View>
       </View>
 
-      <FlatList
-        data={filteredOrders}
-        keyExtractor={(item) => item.id}
+      {showSearch && (
+        <View style={styles.searchContainer}>
+          <Search size={16} color={colors.muted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari pesanan..."
+            placeholderTextColor={colors.muted}
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+          />
+        </View>
+      )}
+
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} activeOpacity={0.85}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardTitleRow}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    item.status === "draft"
-                      ? styles.statusDraft
-                      : styles.statusHold,
-                  ]}
-                >
-                  <Text style={styles.statusText}>
-                    {STATUS_LABEL[item.status]}
-                  </Text>
+        showsVerticalScrollIndicator={false}
+      >
+        {filteredOrders.map((order) => {
+          const type = TYPE_META[order.type];
+          const extra = order.itemCount - order.items.length;
+          return (
+            <View key={order.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={styles.iconSquare}>
+                    <ShoppingBag size={24} color={colors.primary} />
+                  </View>
+                  <View>
+                    <ThemedText variant="sm" weight="bold" color="ink">
+                      Order #{order.id}
+                    </ThemedText>
+                    <ThemedText variant="micro" color="muted">
+                      {order.customer} • {order.time}
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={[styles.typeBadge, { backgroundColor: type.bg }]}>
+                  <ThemedText
+                    variant="micro"
+                    weight="bold"
+                    uppercase
+                    style={{ color: type.fg }}
+                  >
+                    {type.label}
+                  </ThemedText>
                 </View>
               </View>
-              <Text style={styles.cardMeta}>
-                {item.id} • {item.updatedAt}
-              </Text>
-            </View>
 
-            <View style={styles.cardBody}>
-              <Text style={styles.cardCustomer}>
-                {item.customer ?? "Tanpa pelanggan"}
-              </Text>
-              <Text style={styles.cardItems}>{item.itemCount} item</Text>
-            </View>
+              <View style={styles.cardMiddle}>
+                <View style={styles.avatarStack}>
+                  {order.items.map((uri) => (
+                    <Image key={uri} source={{ uri }} style={styles.avatar} />
+                  ))}
+                  {extra > 0 && (
+                    <View style={styles.avatarMore}>
+                      <ThemedText variant="micro" weight="bold" color="muted">
+                        +{extra}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.priceBlock}>
+                  <ThemedText variant="micro" color="muted">
+                    {order.itemCount} Items
+                  </ThemedText>
+                  <ThemedText variant="sm" weight="bold" color="primary">
+                    {formatRupiah(order.total)}
+                  </ThemedText>
+                </View>
+              </View>
 
-            <View style={styles.cardFooter}>
-              <Text style={styles.cardTotal}>
-                Rp {item.total.toLocaleString("id-ID")}
-              </Text>
               <View style={styles.cardActions}>
-                <TouchableOpacity style={styles.actionGhost}>
-                  <Text style={styles.actionGhostText}>Hapus</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionPrimary}>
-                  <Text style={styles.actionPrimaryText}>Lanjutkan</Text>
-                </TouchableOpacity>
+                <Pressable style={styles.deleteButton}>
+                  <Trash2 size={14} color={colors.dangerText} />
+                  <ThemedText variant="xs" weight="bold" color="dangerText">
+                    Hapus
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.resumeButton,
+                    pressed && styles.resumeButtonPressed,
+                  ]}
+                >
+                  <ThemedText variant="xs" weight="bold" color="white">
+                    Lanjutkan Pesanan
+                  </ThemedText>
+                  <ArrowRight size={14} color={colors.white} />
+                </Pressable>
               </View>
             </View>
-          </TouchableOpacity>
+          );
+        })}
+        {filteredOrders.length === 0 && (
+          <EmptyState
+            icon={Archive}
+            title="Belum ada pesanan"
+            subtitle="Pesanan yang disimpan akan muncul di sini."
+          />
         )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="archive-outline" size={40} color="#94A3B8" />
-            <Text style={styles.emptyTitle}>Belum ada pesanan</Text>
-            <Text style={styles.emptySubtitle}>
-              Pesanan yang disimpan akan muncul di sini.
-            </Text>
-          </View>
-        }
-      />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -187,196 +243,164 @@ export default function SavedOrdersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F172A",
+    backgroundColor: colors.bg,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#F8FAFC",
+  headerLeft: {
+    flex: 1,
+    gap: 2,
   },
-  subtitle: {
-    fontSize: 13,
-    color: "#94A3B8",
-    marginTop: 4,
-  },
-  addButton: {
+  headerActions: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#4F46E5",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: spacing.sm,
   },
-  addButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 13,
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconButtonActive: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
   },
   searchContainer: {
-    marginHorizontal: 20,
+    marginHorizontal: spacing.screen,
+    marginBottom: spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E293B",
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.lineStrong,
   },
   searchInput: {
     flex: 1,
     height: 44,
-    marginLeft: 8,
-    color: "#E2E8F0",
     fontSize: 14,
+    fontFamily: "PlusJakartaSans_500Medium",
+    color: colors.ink,
   },
-  filterRow: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 20,
-    marginTop: 14,
-    marginBottom: 10,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#1E293B",
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  filterChipActive: {
-    backgroundColor: "#4F46E5",
-    borderColor: "#4F46E5",
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#CBD5F5",
-  },
-  filterChipTextActive: {
-    color: "#FFFFFF",
+  scrollView: {
+    flex: 1,
   },
   list: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    gap: 12,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxxl * 2,
+    gap: spacing.lg,
   },
   card: {
-    backgroundColor: "#1E293B",
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.xl,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.cardBorder,
+    ...shadows.card,
+    gap: spacing.lg,
   },
   cardHeader: {
-    marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
-  cardTitleRow: {
+  cardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
+  },
+  iconSquare: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
+    backgroundColor: colors.orangeBg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  typeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  cardMiddle: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.lineStrong,
+    borderStyle: "dashed",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineStrong,
+    paddingVertical: spacing.md,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#F8FAFC",
-  },
-  cardMeta: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 4,
-  },
-  cardBody: {
+  avatarStack: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  cardCustomer: {
-    fontSize: 13,
-    color: "#E2E8F0",
-  },
-  cardItems: {
-    fontSize: 13,
-    color: "#CBD5F5",
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
   },
-  cardTotal: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#F8FAFC",
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.surfaceMuted,
+    marginLeft: -8,
+  },
+  avatarMore: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: -8,
+  },
+  priceBlock: {
+    alignItems: "flex-end",
+    gap: 2,
   },
   cardActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: spacing.md,
   },
-  actionGhost: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  actionGhostText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#CBD5F5",
-  },
-  actionPrimary: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#4F46E5",
-  },
-  actionPrimaryText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  statusDraft: {
-    backgroundColor: "#334155",
-  },
-  statusHold: {
-    backgroundColor: "#1D4ED8",
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#F8FAFC",
-  },
-  emptyState: {
+  deleteButton: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
-    gap: 8,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#E2E8F0",
+  resumeButton: {
+    flex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.ink,
   },
-  emptySubtitle: {
-    fontSize: 13,
-    color: "#94A3B8",
-    textAlign: "center",
+  resumeButtonPressed: {
+    opacity: 0.85,
   },
 });
