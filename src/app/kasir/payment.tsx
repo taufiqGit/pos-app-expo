@@ -12,6 +12,7 @@ import { useCart } from "@/hooks/useCart";
 import { usePayment } from "@/hooks/usePayment";
 import { useCheckoutStore, type CheckoutMethod } from "@/store/checkoutStore";
 import { useOutletStore } from "@/store/outletStore";
+import { useShiftStore } from "@/store/shiftStore";
 import { buildSalePayload, createSale } from "@/services/salesService";
 import { colors, motion, radius, spacing } from "@/theme";
 import { formatRupiah } from "@/utils/format";
@@ -74,6 +75,17 @@ export default function PaymentScreen() {
   const handleConfirm = async () => {
     if (!selectedOutlet) {
       Alert.alert("Outlet belum dipilih", "Pilih outlet terlebih dahulu sebelum transaksi.");
+      return;
+    }
+
+    // Wajib shift aktif sebelum penjualan
+    const shift = await useShiftStore.getState().refreshStatus();
+    if (!shift) {
+      Alert.alert(
+        "Shift belum dimulai",
+        "Mulai shift kasir terlebih dahulu sebelum melakukan penjualan.",
+        [{ text: "OK", onPress: () => router.replace("/(tabs)/cashier") }],
+      );
       return;
     }
 

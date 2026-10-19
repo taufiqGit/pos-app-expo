@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { ArrowRight, PackageSearch, Search } from "lucide-react-native";
 import React, { useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ProductCard } from "@/components/pos/ProductCard";
 import { UnitPickerSheet } from "@/components/pos/UnitPickerSheet";
@@ -11,6 +11,7 @@ import { useCart } from "@/hooks/useCart";
 import { useProducts } from "@/hooks/useProducts";
 import { useAuthStore } from "@/store/authStore";
 import { useOutletStore } from "@/store/outletStore";
+import { useShiftStore } from "@/store/shiftStore";
 import { colors, motion, radius, shadows, spacing } from "@/theme";
 import type { Product } from "@/types";
 import { formatRupiah } from "@/utils/format";
@@ -48,20 +49,62 @@ export default function CashierScreen() {
   const { filteredProducts, categories, loading: productsLoading, error: productsError, searchQuery, searchProducts, selectedCategory, filterByCategory, fetchProducts } =
     useProducts();
   const { itemCount, total, isEmpty, addProduct } = useCart();
+  const activeShift = useShiftStore((s) => s.activeShift);
+  const refreshStatus = useShiftStore((s) => s.refreshStatus);
+  const startShift = useShiftStore((s) => s.start);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [pickerProduct, setPickerProduct] = useState<Product | null>(null);
+  const [shiftModalVisible, setShiftModalVisible] = useState(false);
+  const [openingCash, setOpeningCash] = useState("");
+  const [startingShift, setStartingShift] = useState(false);
 
-  const displayName = user?.name ?? "Kasir";
+  const displayName = user?.username ?? "Kasir";
   const outletLabel = selectedOutlet ? `${selectedOutlet.name} • ${selectedOutlet.code}` : "Outlet belum dipilih";
 
   useFocusEffect(
     React.useCallback(() => {
       fetchProducts();
-    }, [fetchProducts]),
+      // Wajib ada shift aktif sebelum mulai penjualan
+      refreshStatus().then((shift) => {
+        if (!shift) {
+          setShiftModalVisible(true);
+        }
+      });
+    }, [fetchProducts, refreshStatus]),
   );
 
+  const handleStartShift = async () => {
+    if (!selectedOutlet) {
+      Alert.alert("Outlet belum dipilih", "Pilih outlet terlebih dahulu di menu Pengaturan.");
+      return;
+    }
+    const cash = Number(openingCash || "0");
+    if (!Number.isFinite(cash) || cash < 0) {
+      Alert.alert("Kas awal tidak valid", "Masukkan nominal kas awal yang benar.");
+      return;
+    }
+    try {
+      setStartingShift(true);
+      await startShift(selectedOutlet.id, cash);
+      setShiftModalVisible(false);
+      setOpeningCash("");
+    } catch (err: any) {
+      Alert.alert("Gagal memulai shift", err?.message ?? "Coba lagi nanti.");
+    } finally {
+      setStartingShift(false);
+    }
+  };
+
+  /** Guard: hanya boleh transaksi jika shift aktif */
+  const requireShift = () => {
+    if (activeShift) return true;
+    setShiftModalVisible(true);
+    return false;
+  };
+
   const handleAddProduct = (product: Product) => {
+    if (!requireShift()) return;
     if ((product.productUnits?.length ?? 0) > 0) {
       // Produk multi-satuan → pilih satuan & qty dulu
       setPickerProduct(product);
@@ -71,6 +114,7 @@ export default function CashierScreen() {
   };
 
   const handleViewOrder = () => {
+    if (!requireShift()) return;
     router.push("/kasir/order-review");
   };
 
@@ -134,10 +178,10 @@ export default function CashierScreen() {
           />
           {categories.map((category) => (
             <CategoryPill
-              key={category}
-              label={category}
-              active={selectedCategory === category}
-              onPress={() => filterByCategory(category)}
+              key={category.id}
+              label={category.name}
+              active={selectedCategory === category.id}
+              onPress={() => filterByCategory(category.id)}
             />
           ))}
         </ScrollView>
@@ -170,6 +214,48 @@ export default function CashierScreen() {
         onClose={() => setPickerProduct(null)}
         onConfirm={(product, unit, quantity) => addProduct(product, unit, quantity)}
       />
+
+      {/* Modal wajib mulai shift sebelum penjualan */}
+      <Modal
+        visible={shiftModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShiftModalVisible(false)}
+      >
+        <View style={styles.shiftModalOverlay}>
+          <View style={styles.shiftModalCard}>
+            <ThemedText variant="lg" weight="bold" color="ink">
+              Mulai Shift Kasir
+            </ThemedText>
+            <ThemedText variant="sm" color="textSecondary" style={styles.shiftModalHint}>
+              Anda belum memiliki shift aktif. Mulai shift terlebih dahulu untuk melakukan penjualan.
+            </ThemedText>
+            <View style={styles.shiftInputWrap}>
+              <Text style={styles.shiftInputPrefix}>Rp</Text>
+              <TextInput
+                style={styles.shiftInput}
+                placeholder="Kas awal (mis. 500000)"
+                placeholderTextColor={colors.muted}
+                keyboardType="number-pad"
+                value={openingCash}
+                onChangeText={setOpeningCash}
+              />
+            </View>
+            <Pressable
+              onPress={handleStartShift}
+              disabled={startingShift}
+              style={({ pressed }) => [
+                styles.shiftStartButton,
+                (pressed || startingShift) && styles.pressed,
+              ]}
+            >
+              <ThemedText variant="sm" weight="bold" color="onPrimary">
+                {startingShift ? "Memulai..." : "Mulai Shift"}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Floating checkout bar (hanya saat cart tidak kosong) */}
       {!isEmpty ? (
@@ -366,5 +452,52 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
     transform: [{ scale: motion.pressScale }],
+  },
+
+  // Modal mulai shift
+  shiftModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.screen,
+  },
+  shiftModalCard: {
+    width: "100%",
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.card,
+    gap: spacing.md,
+  },
+  shiftModalHint: {
+    lineHeight: 18,
+  },
+  shiftInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: spacing.md,
+    height: 48,
+  },
+  shiftInputPrefix: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  shiftInput: {
+    flex: 1,
+    fontFamily: "PlusJakartaSans_500Medium",
+    fontSize: 14,
+    color: colors.ink,
+  },
+  shiftStartButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    paddingVertical: spacing.md,
   },
 });

@@ -17,7 +17,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
 
-  const initials = (user?.name ?? "POS")
+  const initials = (user?.username ?? "POS")
     .split(" ")
     .map((part) => part[0])
     .slice(0, 2)
@@ -44,7 +44,7 @@ export default function ProfileScreen() {
             </ThemedText>
           </View>
           <ThemedText variant="lg" weight="bold" color="ink" style={styles.name}>
-            {user?.name ?? "Pengguna POS"}
+            {user?.username ?? "Pengguna POS"}
           </ThemedText>
           <View style={styles.roleBadge}>
             <ThemedText variant="micro" weight="bold" color="primary" uppercase>

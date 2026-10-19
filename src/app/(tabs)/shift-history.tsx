@@ -1,48 +1,113 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadows, spacing } from "@/theme";
+import { formatRupiah } from "@/utils/format";
+import {
+  CashierShift,
+  fetchCashierShifts,
+  fetchCashierShiftStatus,
+} from "@/services/cashierShiftService";
 
-const shifts = [
-  {
-    id: "SHIFT-1001",
-    cashier: "Alya",
-    openedAt: "08:00",
-    closedAt: "12:30",
-    totalSales: "Rp 2.450.000",
-    status: "Closed",
-  },
-  {
-    id: "SHIFT-1002",
-    cashier: "Bima",
-    openedAt: "12:30",
-    closedAt: "17:00",
-    totalSales: "Rp 3.120.000",
-    status: "Closed",
-  },
-  {
-    id: "SHIFT-1003",
-    cashier: "Citra",
-    openedAt: "17:00",
-    closedAt: "-",
-    totalSales: "Rp 1.080.000",
-    status: "Active",
-  },
-];
+const timeFormatter = new Intl.DateTimeFormat("id-ID", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Asia/Jakarta",
+});
+
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  weekday: "long",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Jakarta",
+});
+
+const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Asia/Jakarta",
+});
+
+function formatTime(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return timeFormatter.format(d);
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return dateFormatter.format(d);
+}
 
 export default function ShiftHistoryScreen() {
+  const [shifts, setShifts] = useState<CashierShift[]>([]);
+  const [activeShift, setActiveShift] = useState<CashierShift | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [list, status] = await Promise.all([
+        fetchCashierShifts(),
+        fetchCashierShiftStatus(),
+      ]);
+      setShifts(list.shifts ?? []);
+      setActiveShift(status && status.id ? status : null);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Gagal memuat riwayat shift");
+    }
+  }, []);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const todayKey = dayKeyFormatter.format(new Date());
+  const todayCount = shifts.filter(
+    (s) => s.created_at && dayKeyFormatter.format(new Date(s.created_at)) === todayKey,
+  ).length;
+
+  const isActive = (s: CashierShift) =>
+    s.status === "active" || (!!activeShift && s.id === activeShift.id);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.center} edges={["top"]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -62,85 +127,87 @@ export default function ShiftHistoryScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Shift Aktif</Text>
-            <Text style={styles.summaryValue}>1</Text>
+            <Text style={styles.summaryValue}>{activeShift ? 1 : 0}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Hari Ini</Text>
-            <Text style={styles.summaryValue}>3</Text>
+            <Text style={styles.summaryValue}>{todayCount}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Total</Text>
-            <Text style={styles.summaryValue}>28</Text>
+            <Text style={styles.summaryValue}>{shifts.length}</Text>
           </View>
         </View>
 
+        {error && (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
         {/* Shift List */}
         <View style={styles.list}>
-          {shifts.map((shift) => (
-            <View key={shift.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.shiftId}>{shift.id}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    shift.status === "Active"
-                      ? styles.statusActive
-                      : styles.statusClosed,
-                  ]}
-                >
-                  <Text
+          {shifts.length === 0 && !error && (
+            <Text style={styles.emptyText}>Belum ada shift tercatat</Text>
+          )}
+          {shifts.map((shift) => {
+            const active = isActive(shift);
+            return (
+              <View key={shift.id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.shiftId}>{formatDate(shift.start_time)}</Text>
+                  <View
                     style={[
-                      styles.statusText,
-                      shift.status === "Active"
-                        ? styles.statusTextActive
-                        : styles.statusTextClosed,
+                      styles.statusBadge,
+                      active ? styles.statusActive : styles.statusClosed,
                     ]}
                   >
-                    {shift.status}
+                    <Text
+                      style={[
+                        styles.statusText,
+                        active ? styles.statusTextActive : styles.statusTextClosed,
+                      ]}
+                    >
+                      {active ? "Active" : "Closed"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.row}>
+                  <Ionicons
+                    name="time-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.rowText}>
+                    {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
                   </Text>
                 </View>
-              </View>
 
-              <View style={styles.row}>
-                <Ionicons
-                  name="person-outline"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.rowText}>Kasir: {shift.cashier}</Text>
-              </View>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.totalLabel}>Kas Awal</Text>
+                  <Text style={styles.totalValue}>
+                    {formatRupiah(shift.opening_cash ?? 0)}
+                  </Text>
+                </View>
 
-              <View style={styles.row}>
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-                <Text style={styles.rowText}>
-                  {shift.openedAt} - {shift.closedAt}
-                </Text>
+                <TouchableOpacity
+                  style={styles.detailButton}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.detailButtonText}>Lihat Detail</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.cardFooter}>
-                <Text style={styles.totalLabel}>Total Penjualan</Text>
-                <Text style={styles.totalValue}>{shift.totalSales}</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.detailButton}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.detailButtonText}>Lihat Detail</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={colors.primary}
-                />
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -151,6 +218,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -225,6 +298,28 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: colors.line,
   },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.dangerText,
+  },
+  emptyText: {
+    textAlign: "center",
+    fontSize: 13,
+    fontFamily: "PlusJakartaSans_400Regular",
+    color: colors.textSecondary,
+    paddingVertical: spacing.xl,
+  },
   list: {
     gap: spacing.md,
   },
@@ -247,6 +342,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontFamily: "PlusJakartaSans_700Bold",
     color: colors.ink,
+    flex: 1,
+    marginRight: 8,
   },
   statusBadge: {
     paddingHorizontal: 8,

@@ -1,12 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Product } from '../types';
 import { fetchMobileProducts } from '../services/productService';
+import { Category, fetchCategories } from '../services/categoryService';
 
 interface UseProductsReturn {
   products: Product[];
   filteredProducts: Product[];
-  /** Daftar kategori unik dari produk */
-  categories: string[];
+  /** Daftar kategori dari GET /api/categories */
+  categories: Category[];
   loading: boolean;
   error: string | null;
   searchQuery: string;
@@ -20,19 +21,11 @@ interface UseProductsReturn {
 
 export const useProducts = (): UseProductsReturn => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  const categories = useMemo(() => {
-    const unique = new Set(
-      products
-        .map((p) => p.category)
-        .filter((c): c is string => Boolean(c)),
-    );
-    return Array.from(unique);
-  }, [products]);
 
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -59,8 +52,12 @@ export const useProducts = (): UseProductsReturn => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMobileProducts();
+      const [data, cats] = await Promise.all([
+        fetchMobileProducts(),
+        fetchCategories().catch(() => [] as Category[]),
+      ]);
       setProducts(data);
+      setCategories(cats);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to fetch products');
     } finally {

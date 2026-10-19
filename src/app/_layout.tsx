@@ -6,6 +6,8 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { apiEvents } from "../services/apiEvents";
 import { refreshTokens } from "../services/api";
 import { authStorage } from "../services/authStorage";
+import { authService } from "../services/authService";
+import { useAuthStore } from "../store/authStore";
 import { useOutletStore } from "../store/outletStore";
 import { colors, fontAssets } from "@/theme";
 
@@ -57,6 +59,7 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = apiEvents.on("unauthorized", async () => {
       await authStorage.clearTokens();
+      useAuthStore.getState().clearUser();
       router.replace("/(auth)/login");
     });
 
@@ -79,6 +82,29 @@ export default function RootLayout() {
           router.replace("/(auth)/login");
         }
         return;
+      }
+
+      // Token valid tapi data user belum ada (mis. sesi lama sebelum persist)
+      // → ambil ulang profil via GET /api/auth/access
+      if (!useAuthStore.getState().user) {
+        try {
+          const access = await authService.getUserAccess();
+          const { setUser } = useAuthStore.getState();
+          setUser({
+            id: access.id,
+            username: access.username,
+            email: access.email,
+            phone: access.phone,
+            company_id: access.company_id,
+            role: access.role,
+            active: access.active,
+            is_owner: access.is_owner,
+            created_at: access.created_at,
+            updated_at: access.updated_at,
+          });
+        } catch {
+          // Profil gagal diambil — biarkan screen tampilkan fallback
+        }
       }
 
       if (!selectedOutlet) {

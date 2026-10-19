@@ -14,6 +14,7 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radius, shadows, spacing } from "@/theme";
+import { useAuthStore } from "@/store/authStore";
 import { authService } from "../../services/authService";
 
 export default function LoginScreen() {
@@ -36,11 +37,13 @@ export default function LoginScreen() {
 
     try {
       setIsSubmitting(true);
-      await authService.login({
+      const session = await authService.login({
         identifier: trimmedIdentifier,
         password,
         device_name: Constants.deviceName ?? undefined,
       });
+      // Simpan data profil user dari response login-mobile
+      useAuthStore.getState().setUser(session.user);
       router.replace("/select-outlet");
     } catch (error: any) {
       console.error(error, "login error");

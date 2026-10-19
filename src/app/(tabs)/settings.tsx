@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
@@ -17,6 +17,8 @@ import {
 import { ThemedText } from "@/components/ui/ThemedText";
 import { colors, radius, shadows, spacing } from "@/theme";
 import { useAuthStore } from "@/store/authStore";
+import { useOutletStore } from "@/store/outletStore";
+import { useShiftStore } from "@/store/shiftStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { authService } from "../../services/authService";
 
@@ -39,8 +41,11 @@ export default function SettingsScreen() {
   const darkMode = useSettingsStore((state) => state.darkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
   const [notifications, setNotifications] = useState(true);
+  const [endShiftModalVisible, setEndShiftModalVisible] = useState(false);
+  const [closingCash, setClosingCash] = useState("");
+  const [endingShift, setEndingShift] = useState(false);
 
-  const initials = (user?.name ?? "POS")
+  const initials = (user?.username ?? "POS")
     .split(" ")
     .map((part) => part[0])
     .slice(0, 2)
@@ -48,7 +53,48 @@ export default function SettingsScreen() {
     .toUpperCase();
 
   const handleLogout = async () => {
+    // Wajib akhiri shift aktif sebelum logout
+    let shift: import("@/services/cashierShiftService").CashierShift | null = null;
+    try {
+      shift = await useShiftStore.getState().refreshStatus();
+    } catch {
+      // Status gagal dicek — lanjutkan logout
+    }
+
+    if (shift) {
+      setClosingCash("");
+      setEndShiftModalVisible(true);
+      return;
+    }
+
+    await doLogout();
+  };
+
+  /** Konfirmasi dari dialog: akhiri shift dengan kas akhir, lalu logout */
+  const handleConfirmEndShift = async () => {
+    const cash = Number(closingCash || "0");
+    if (!Number.isFinite(cash) || cash < 0) {
+      Alert.alert("Kas akhir tidak valid", "Masukkan nominal kas akhir yang benar.");
+      return;
+    }
+    try {
+      setEndingShift(true);
+      await useShiftStore.getState().end(cash);
+    } catch (err: any) {
+      Alert.alert("Gagal mengakhiri shift", err?.message ?? "Coba lagi nanti.");
+      return;
+    } finally {
+      setEndingShift(false);
+    }
+    setEndShiftModalVisible(false);
+    await doLogout();
+  };
+
+  const doLogout = async () => {
     await authService.logout();
+    useAuthStore.getState().clearUser();
+    useOutletStore.getState().clearSelectedOutlet();
+    useShiftStore.getState().clear();
     router.replace("/(auth)/login");
   };
 
@@ -85,7 +131,7 @@ export default function SettingsScreen() {
                 </View>
                 <View>
                   <ThemedText variant="sm" weight="bold" color="ink">
-                    {user?.name ?? "Pengguna POS"}
+                    {user?.username ?? "Pengguna POS"}
                   </ThemedText>
                   <ThemedText variant="micro" color="textSecondary">
                     {user?.email ?? "-"}
@@ -225,6 +271,57 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Dialog akhiri shift: input kas akhir sebelum logout */}
+      <Modal
+        visible={endShiftModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEndShiftModalVisible(false)}
+      >
+        <View style={styles.endShiftOverlay}>
+          <View style={styles.endShiftCard}>
+            <ThemedText variant="lg" weight="bold" color="ink">
+              Akhiri Shift
+            </ThemedText>
+            <ThemedText variant="sm" color="textSecondary" style={styles.endShiftHint}>
+              Anda masih memiliki shift aktif. Masukkan kas akhir untuk mengakhiri shift sebelum keluar dari aplikasi.
+            </ThemedText>
+            <View style={styles.endShiftInputWrap}>
+              <Text style={styles.endShiftInputPrefix}>Rp</Text>
+              <TextInput
+                style={styles.endShiftInput}
+                placeholder="Kas akhir (mis. 750000)"
+                placeholderTextColor={colors.muted}
+                keyboardType="number-pad"
+                value={closingCash}
+                onChangeText={setClosingCash}
+              />
+            </View>
+            <Pressable
+              onPress={handleConfirmEndShift}
+              disabled={endingShift}
+              style={({ pressed }) => [
+                styles.endShiftConfirmButton,
+                (pressed || endingShift) && styles.buttonPressed,
+              ]}
+            >
+              <ThemedText variant="sm" weight="bold" color="onPrimary">
+                {endingShift ? "Mengakhiri..." : "Akhiri & Keluar"}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => setEndShiftModalVisible(false)}
+              disabled={endingShift}
+              style={({ pressed }) => [styles.endShiftCancelButton, pressed && styles.buttonPressed]}
+            >
+              <ThemedText variant="sm" weight="semiBold" color="textSecondary">
+                Batal
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -355,5 +452,56 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     opacity: 0.9,
+  },
+
+  // Dialog akhiri shift
+  endShiftOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.screen,
+  },
+  endShiftCard: {
+    width: "100%",
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.card,
+    gap: spacing.md,
+  },
+  endShiftHint: {
+    lineHeight: 18,
+  },
+  endShiftInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    paddingHorizontal: spacing.md,
+    height: 48,
+  },
+  endShiftInputPrefix: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  endShiftInput: {
+    flex: 1,
+    fontFamily: "PlusJakartaSans_500Medium",
+    fontSize: 14,
+    color: colors.ink,
+  },
+  endShiftConfirmButton: {
+    backgroundColor: colors.danger,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    paddingVertical: spacing.md,
+  },
+  endShiftCancelButton: {
+    alignItems: "center",
+    paddingVertical: spacing.sm,
   },
 });

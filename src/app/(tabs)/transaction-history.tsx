@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Banknote,
   Calendar,
@@ -10,38 +10,80 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react-native";
-import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ThemedText } from "@/components/ui/ThemedText";
+import { fetchSales, type Sale } from "@/services/salesService";
 import { colors, motion, radius, shadows, spacing } from "@/theme";
 import { formatRupiah } from "@/utils/format";
 
-type TransactionStatus = "success" | "refunded";
-type PaymentKind = "cash" | "cashless" | "ewallet";
+const timeFormatter = new Intl.DateTimeFormat("id-ID", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Asia/Jakarta",
+});
 
-interface MockTransaction {
-  id: string;
-  time: string;
-  menuCount: number;
-  total: number;
-  status: TransactionStatus;
-  kind: PaymentKind;
-  day: "today" | "yesterday";
+const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Asia/Jakarta",
+});
+
+function formatTime(iso: string): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return timeFormatter.format(d);
 }
 
-const MOCK_TRANSACTIONS: MockTransaction[] = [
-  { id: "TRX-8829", time: "09:41", menuCount: 3, total: 18500, status: "success", kind: "cashless", day: "today" },
-  { id: "TRX-8828", time: "08:20", menuCount: 1, total: 5350, status: "success", kind: "cash", day: "today" },
-  { id: "TRX-8815", time: "19:15", menuCount: 5, total: 42100, status: "refunded", kind: "ewallet", day: "yesterday" },
-  { id: "TRX-8810", time: "13:02", menuCount: 2, total: 67000, status: "success", kind: "cash", day: "yesterday" },
-];
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return dayKeyFormatter.format(d);
+}
+
+/** Nomor order pendek dari UUID: 8 karakter pertama */
+function shortOrderNo(id: string): string {
+  return id.slice(0, 8).toUpperCase();
+}
+
+type PaymentKind = "cash" | "cashless" | "ewallet";
 
 const PAYMENT_META: Record<PaymentKind, { label: string; Icon: LucideIcon }> = {
   cash: { label: "Tunai", Icon: Banknote },
   cashless: { label: "Cashless Credit", Icon: CreditCard },
   ewallet: { label: "OVO / QRIS", Icon: Wallet },
 };
+
+/** Mapping payment_method backend → kategori UI */
+function paymentKind(method: string): PaymentKind {
+  switch (method) {
+    case "cash":
+      return "cash";
+    case "debit_card":
+    case "credit_card":
+      return "cashless";
+    case "qris":
+    case "transfer":
+      return "ewallet";
+    default:
+      return "cash";
+  }
+}
+
+/** Label status transaksi backend → UI */
+function statusLabel(status: string): { label: string; isSuccess: boolean } {
+  switch (status) {
+    case "completed":
+      return { label: "Success", isSuccess: true };
+    case "refunded":
+      return { label: "Refunded", isSuccess: false };
+    default:
+      return { label: status.charAt(0).toUpperCase() + status.slice(1), isSuccess: false };
+  }
+}
 
 interface StatPillProps {
   label: string;
@@ -62,31 +104,72 @@ function StatPill({ label, dotColor, textColor, bgColor }: StatPillProps) {
 }
 
 export default function TransactionHistoryScreen() {
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchVisible, setSearchVisible] = useState(false);
   const [search, setSearch] = useState("");
 
+  const load = useCallback(async () => {
+    try {
+      const list = await fetchSales(1, 50);
+      setSales(list);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Gagal memuat riwayat penjualan");
+    }
+  }, []);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const todayKey = dayKey(new Date().toISOString());
+
   const todayTotal = useMemo(
-    () => MOCK_TRANSACTIONS.filter((t) => t.day === "today").reduce((sum, t) => sum + t.total, 0),
-    [],
+    () =>
+      sales
+        .filter((s) => dayKey(s.created_at) === todayKey)
+        .reduce((sum, s) => sum + (s.grand_total ?? 0), 0),
+    [sales, todayKey],
   );
 
   const filtered = useMemo(() => {
     const lower = search.toLowerCase();
-    return MOCK_TRANSACTIONS.filter((t) => t.id.toLowerCase().includes(lower));
-  }, [search]);
+    if (!lower) return sales;
+    return sales.filter(
+      (s) =>
+        s.id.toLowerCase().includes(lower) ||
+        shortOrderNo(s.id).toLowerCase().includes(lower) ||
+        (s.outlet_name ?? "").toLowerCase().includes(lower) ||
+        (s.user_name ?? "").toLowerCase().includes(lower),
+    );
+  }, [sales, search]);
 
-  const todayTransactions = filtered.filter((t) => t.day === "today");
-  const yesterdayTransactions = filtered.filter((t) => t.day === "yesterday");
+  const todayTransactions = filtered.filter((s) => dayKey(s.created_at) === todayKey);
+  const yesterdayTransactions = filtered.filter((s) => dayKey(s.created_at) !== todayKey);
 
-  const renderTransaction = (item: MockTransaction) => {
-    const { label: methodLabel, Icon: MethodIcon } = PAYMENT_META[item.kind];
-    const isSuccess = item.status === "success";
+  const cashCount = sales.filter((s) => paymentKind(s.payment_method) === "cash").length;
+  const cashlessCount = sales.filter((s) => paymentKind(s.payment_method) !== "cash").length;
+
+  const renderTransaction = (item: Sale) => {
+    const kind = paymentKind(item.payment_method);
+    const { label: methodLabel, Icon: MethodIcon } = PAYMENT_META[kind];
+    const { label: statusText, isSuccess } = statusLabel(item.status);
     return (
       <Pressable
         key={item.id}
         // TODO: detail transaksi (route /transaction/[id]) menyusul bersama API
         accessibilityRole="button"
-        accessibilityLabel={`Order ${item.id}, ${formatRupiah(item.total)}`}
+        accessibilityLabel={`Order ${shortOrderNo(item.id)}, ${formatRupiah(item.grand_total)}`}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
         <View style={styles.cardHeader}>
@@ -96,16 +179,16 @@ export default function TransactionHistoryScreen() {
             </View>
             <View>
               <ThemedText variant="sm" weight="bold" color="ink">
-                Order #{item.id}
+                Order #{shortOrderNo(item.id)}
               </ThemedText>
               <ThemedText variant="micro" color="muted">
-                {item.time} • {item.menuCount} Menu
+                {formatTime(item.created_at)} • {item.user_name ?? "-"}
               </ThemedText>
             </View>
           </View>
           <View style={styles.cardAmount}>
             <ThemedText variant="sm" weight="bold" color="primary">
-              {formatRupiah(item.total)}
+              {formatRupiah(item.grand_total)}
             </ThemedText>
             <View
               style={[
@@ -118,7 +201,7 @@ export default function TransactionHistoryScreen() {
                 weight="bold"
                 color={isSuccess ? "success" : "danger"}
               >
-                {isSuccess ? "Success" : "Refunded"}
+                {statusText}
               </ThemedText>
             </View>
           </View>
@@ -135,6 +218,14 @@ export default function TransactionHistoryScreen() {
       </Pressable>
     );
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.center} edges={["top"]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -197,13 +288,13 @@ export default function TransactionHistoryScreen() {
             bgColor={colors.orangeBg}
           />
           <StatPill
-            label="Cashless"
+            label={`${cashlessCount} Cashless`}
             dotColor={colors.success}
             textColor={colors.success}
             bgColor={colors.successBg}
           />
           <StatPill
-            label="Tunai"
+            label={`${cashCount} Tunai`}
             dotColor={colors.info}
             textColor={colors.info}
             bgColor={colors.infoBg}
@@ -216,20 +307,25 @@ export default function TransactionHistoryScreen() {
         data={[...todayTransactions, ...yesterdayTransactions]}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
-          todayTransactions.length > 0 ? (
+          error ? (
+            <ThemedText variant="xs" color="danger" style={styles.errorText}>
+              {error}
+            </ThemedText>
+          ) : todayTransactions.length > 0 ? (
             <ThemedText variant="micro" weight="bold" color="muted" uppercase style={styles.sectionLabel}>
               Hari ini
             </ThemedText>
           ) : null
         }
         renderItem={({ item }) => {
-          const isYesterday = item.day === "yesterday";
+          const isNotToday = dayKey(item.created_at) !== todayKey;
           return (
             <View>
-              {isYesterday ? (
+              {isNotToday ? (
                 <ThemedText variant="micro" weight="bold" color="muted" uppercase style={styles.sectionLabel}>
-                  Kemarin
+                  Sebelumnya
                 </ThemedText>
               ) : null}
               {renderTransaction(item)}
@@ -240,8 +336,8 @@ export default function TransactionHistoryScreen() {
           <View style={styles.emptyWrap}>
             <EmptyState
               icon={SearchX}
-              title="Tidak ada riwayat"
-              subtitle="Coba ubah filter atau kata kunci pencarian Anda"
+              title={error ? "Gagal memuat transaksi" : "Tidak ada riwayat"}
+              subtitle={error ?? "Coba kata kunci lain atau tarik ke bawah untuk memuat ulang"}
             />
           </View>
         }
@@ -254,6 +350,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Header
@@ -335,6 +437,9 @@ const styles = StyleSheet.create({
   },
   emptyWrap: {
     marginTop: spacing.xxxl,
+  },
+  errorText: {
+    textAlign: "center",
   },
 
   // Card transaksi

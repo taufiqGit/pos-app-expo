@@ -61,6 +61,40 @@ export function buildSalePayload(
   };
 }
 
+export interface Sale {
+  id: string;
+  outlet_id: string;
+  outlet_name?: string;
+  user_id: string;
+  user_name?: string;
+  payment_method: SalePaymentMethod | string;
+  status: "pending" | "completed" | "cancelled" | "refunded" | string;
+  sub_total: number;
+  discount_bill: number;
+  grand_total: number;
+  paid_amount: number;
+  change_amount: number;
+  created_at: string;
+}
+
+export interface ListSalesResponse {
+  data: Sale[];
+}
+
+/** GET /api/sales — daftar transaksi (paginated) */
+export async function fetchSales(page = 1, limit = 50): Promise<Sale[]> {
+  const response = await api.get<ListSalesResponse>("/api/sales", {
+    params: { page, limit },
+  });
+  return response.data?.data ?? [];
+}
+
+/** GET /api/sales/{id} — detail transaksi */
+export async function fetchSaleById(id: string): Promise<Sale> {
+  const response = await api.get<Sale>(`/api/sales/${id}`);
+  return response.data;
+}
+
 export async function createSale(payload: CreateSalePayload): Promise<SaleResponse> {
   const response = await api.post<SaleResponse>("/api/sales", payload);
   return response.data;
