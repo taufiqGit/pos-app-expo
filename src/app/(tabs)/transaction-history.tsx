@@ -123,7 +123,10 @@ export default function TransactionHistoryScreen() {
   }, []);
 
   useEffect(() => {
-    load().finally(() => setLoading(false));
+    void (async () => {
+      await load();
+      setLoading(false);
+    })();
   }, [load]);
 
   const onRefresh = useCallback(async () => {
@@ -317,7 +320,7 @@ export default function TransactionHistoryScreen() {
             <ThemedText variant="micro" weight="bold" color="muted" uppercase style={styles.sectionLabel}>
               Hari ini
             </ThemedText>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const isNotToday = dayKey(item.created_at) !== todayKey;

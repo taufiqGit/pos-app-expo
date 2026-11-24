@@ -1,9 +1,14 @@
 import { create } from 'zustand';
 import { CartItem } from '../types/cart';
 
-/** Composite id: beda satuan = baris cart berbeda, tidak di-merge */
-export function cartLineId(productId: string, productUnitId?: string | null): string {
-  return `${productId}:${productUnitId ?? 'base'}`;
+/** Composite id: beda satuan ATAU beda modifier = baris cart berbeda, tidak di-merge */
+export function cartLineId(
+  productId: string,
+  productUnitId?: string | null,
+  modifierOptionIds: string[] = [],
+): string {
+  const mods = [...modifierOptionIds].sort().join("+") || "none";
+  return `${productId}:${productUnitId ?? "base"}:${mods}`;
 }
 
 interface CartState {

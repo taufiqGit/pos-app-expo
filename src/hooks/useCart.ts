@@ -1,6 +1,28 @@
 import { useCallback } from "react";
 import { useCartStore, cartLineId } from "../store/cartStore";
 import { CartItem, Product, ProductUnit, resolveUnitPrice, toBaseQty } from "../types";
+import type { SelectedModifier } from "../services/modifierService";
+import { applyProductDiscounts } from "../utils/discount";
+
+/** Harga per satuan setelah diskon produk (product_rp / product_pct, urut priority). */
+function resolveItemFinalPrice(item: CartItem): number {
+  return applyProductDiscounts(item.price, item.discounts).finalPrice;
+}
+
+/** Total harga modifier baris ini (per unit × qty). */
+function resolveItemModifiersTotal(item: CartItem): number {
+  return (item.modifiers ?? []).reduce((sum, m) => sum + (m.price ?? 0), 0) * item.quantity;
+}
+
+/** Harga akhir baris = produk setelah diskon + modifier. */
+function resolveItemLineTotal(item: CartItem): number {
+  return resolveItemFinalPrice(item) * item.quantity + resolveItemModifiersTotal(item);
+}
+
+/** Total potongan diskon produk (bukan diskon manual keranjang). */
+function resolveItemProductDiscount(item: CartItem): number {
+  return (item.price - resolveItemFinalPrice(item)) * item.quantity;
+}
 
 export const useCart = () => {
   const {
@@ -15,7 +37,12 @@ export const useCart = () => {
   } = useCartStore();
 
   const subtotal = items.reduce(
-    (sum: number, item: CartItem) => sum + item.price * item.quantity,
+    (sum: number, item: CartItem) => sum + resolveItemLineTotal(item),
+    0,
+  );
+
+  const productDiscountTotal = items.reduce(
+    (sum: number, item: CartItem) => sum + resolveItemProductDiscount(item),
     0,
   );
 
@@ -26,7 +53,7 @@ export const useCart = () => {
 
   const taxAmount = items.reduce(
     (sum: number, item: CartItem) =>
-      sum + item.price * item.quantity * ((item.tax ?? 0) / 100),
+      sum + resolveItemLineTotal(item) * ((item.tax ?? 0) / 100),
     0,
   );
 
@@ -36,10 +63,14 @@ export const useCart = () => {
   const itemCount = items.length;
 
   const addProduct = useCallback(
-    (product: Product, unit?: ProductUnit, quantity = 1) => {
+    (product: Product, unit?: ProductUnit, quantity = 1, modifiers: SelectedModifier[] = []) => {
       const price = resolveUnitPrice(product, unit);
       addItem({
-        id: cartLineId(product.id, unit?.id),
+        id: cartLineId(
+          product.id,
+          unit?.id,
+          modifiers.map((m) => m.optionId),
+        ),
         productId: product.id,
         name: product.name,
         price,
@@ -50,6 +81,8 @@ export const useCart = () => {
         image: product.image,
         sku: product.sku,
         tax: product.taxRate,
+        discounts: product.discounts,
+        modifiers: modifiers.length > 0 ? modifiers : undefined,
       });
     },
     [addItem],
@@ -98,6 +131,7 @@ export const useCart = () => {
 
     // Totals
     subtotal,
+    productDiscountTotal,
     discountAmount: discountTotal,
     taxAmount,
     total,

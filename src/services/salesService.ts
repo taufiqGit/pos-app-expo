@@ -7,6 +7,17 @@
 
 import { api } from "./api";
 import { CartItem } from "../types/cart";
+import { sortProductDiscounts } from "../utils/discount";
+
+interface SaleModifierPayload {
+  modifier_group_id: string;
+  modifier_group_name: string;
+  modifier_option_id: string;
+  modifier_option_name: string;
+  qty: number;
+  price: number;
+  total: number;
+}
 
 export type SalePaymentMethod = "cash" | "debit_card" | "credit_card" | "qris" | "transfer";
 
@@ -20,7 +31,12 @@ export interface CreateSalePayload {
     product_id: string;
     product_unit_id?: string | null;
     quantity: number;
+    /** Harga dasar per satuan sebelum diskon produk */
     unit_price: number;
+    /** Diskon produk aktif; nominal dihitung ulang server-side */
+    discounts?: { discount_id: string }[];
+    /** Modifier terpilih; total dihitung server-side dari price × qty */
+    modifiers?: SaleModifierPayload[];
   }[];
 }
 
@@ -45,11 +61,12 @@ export function buildSalePayload(
   method: string,
   paidAmount: number,
   items: CartItem[],
+  billDiscount: number = 0,
 ): CreateSalePayload {
   return {
     outlet_id: outletId,
     payment_method: METHOD_MAP[method] ?? "cash",
-    discount_bill: 0,
+    discount_bill: billDiscount,
     tax_rate: 0,
     paid_amount: paidAmount,
     details: items.map((item) => ({
@@ -57,6 +74,23 @@ export function buildSalePayload(
       product_unit_id: item.productUnitId ?? null,
       quantity: Math.round(item.quantity * 1000) / 1000,
       unit_price: item.price,
+      // Urutan sama dengan perhitungan UI: priority lalu created_at terlama
+      discounts: item.discounts?.length
+        ? sortProductDiscounts(item.discounts)
+            .filter((d) => d.is_active !== false)
+            .map((d) => ({ discount_id: d.id }))
+        : undefined,
+      modifiers: item.modifiers?.length
+        ? item.modifiers.map((m) => ({
+            modifier_group_id: m.groupId,
+            modifier_group_name: m.groupName,
+            modifier_option_id: m.optionId,
+            modifier_option_name: m.optionName,
+            qty: 1,
+            price: m.price ?? 0,
+            total: m.price ?? 0,
+          }))
+        : undefined,
     })),
   };
 }

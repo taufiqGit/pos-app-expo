@@ -1,3 +1,6 @@
+import type { ProductDiscount } from "../utils/discount";
+import type { SelectedModifier } from "../services/modifierService";
+
 export interface CartItem {
   /** Composite id: `${productId}:${productUnitId ?? "base"}` — item beda satuan tidak di-merge */
   id: string;
@@ -16,4 +19,8 @@ export interface CartItem {
   sku?: string;
   tax?: number;
   discount?: number;
+  /** Diskon produk aktif (snapshot saat masuk cart) */
+  discounts?: ProductDiscount[];
+  /** Modifier terpilih untuk baris ini (snapshot saat masuk cart) */
+  modifiers?: SelectedModifier[];
 }

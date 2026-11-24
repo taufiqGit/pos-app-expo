@@ -5,6 +5,7 @@
 
 import { api } from "./api";
 import { Product, ProductUnit } from "../types";
+import { ProductDiscount } from "../utils/discount";
 
 /** Bentuk respons ProductList dari backend */
 interface MobileProductPayload {
@@ -18,6 +19,7 @@ interface MobileProductPayload {
   price: number;
   image_url: string;
   category: string;
+  discounts?: ProductDiscount[];
   product_units?: ProductUnit[];
 }
 
@@ -31,6 +33,7 @@ function mapProduct(payload: MobileProductPayload): Product {
     baseUnitId: payload.unit_id,
     category: payload.category || undefined,
     image: payload.image_url || undefined,
+    discounts: payload.discounts ?? [],
     productUnits: payload.product_units ?? [],
   };
 }

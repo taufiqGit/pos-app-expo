@@ -4,11 +4,13 @@ import React, { useState } from "react";
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ProductCard } from "@/components/pos/ProductCard";
+import { ModifierPickerSheet } from "@/components/pos/ModifierPickerSheet";
 import { UnitPickerSheet } from "@/components/pos/UnitPickerSheet";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ThemedText } from "@/components/ui/ThemedText";
 import { useCart } from "@/hooks/useCart";
 import { useProducts } from "@/hooks/useProducts";
+import { fetchProductModifierGroups } from "@/services/modifierService";
 import { useAuthStore } from "@/store/authStore";
 import { useOutletStore } from "@/store/outletStore";
 import { useShiftStore } from "@/store/shiftStore";
@@ -58,6 +60,10 @@ export default function CashierScreen() {
   const [shiftModalVisible, setShiftModalVisible] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
   const [startingShift, setStartingShift] = useState(false);
+  /** Produk yang menunggu pemilihan modifier (setelah satuan/qty dipilih) */
+  const [modifierProduct, setModifierProduct] = useState<Product | null>(null);
+  /** Satuan & qty yang sudah dipilih sebelum popup modifier */
+  const pendingRef = React.useRef<{ unit?: import("@/types").ProductUnit; quantity: number }>({ quantity: 1 });
 
   const displayName = user?.username ?? "Kasir";
   const outletLabel = selectedOutlet ? `${selectedOutlet.name} • ${selectedOutlet.code}` : "Outlet belum dipilih";
@@ -110,7 +116,33 @@ export default function CashierScreen() {
       setPickerProduct(product);
       return;
     }
-    addProduct(product);
+    void proceedToAdd(product, 1, undefined);
+  };
+
+  /** Lanjut menambah ke cart: cek modifier produk dulu, lalu tampilkan picker bila ada */
+  const proceedToAdd = async (product: Product, quantity: number, unit?: import("@/types").ProductUnit) => {
+    pendingRef.current = { unit, quantity };
+    try {
+      const groups = await fetchProductModifierGroups(product.id);
+      if (groups.length > 0) {
+        setModifierProduct(product);
+        return;
+      }
+    } catch {
+      // Gagal cek modifier → tetap tambahkan tanpa modifier
+    }
+    addProduct(product, unit, quantity);
+  };
+
+  const handleUnitConfirm = (product: Product, unit: import("@/types").ProductUnit | undefined, quantity: number) => {
+    void proceedToAdd(product, quantity, unit);
+  };
+
+  const handleModifierConfirm = (modifiers: import("@/services/modifierService").SelectedModifier[]) => {
+    const product = modifierProduct;
+    if (!product) return;
+    const { unit, quantity } = pendingRef.current;
+    addProduct(product, unit, quantity, modifiers);
   };
 
   const handleViewOrder = () => {
@@ -212,7 +244,15 @@ export default function CashierScreen() {
         product={pickerProduct}
         visible={pickerProduct !== null}
         onClose={() => setPickerProduct(null)}
-        onConfirm={(product, unit, quantity) => addProduct(product, unit, quantity)}
+        onConfirm={handleUnitConfirm}
+      />
+
+      {/* Sheet pilih modifier (produk yang punya modifier groups) */}
+      <ModifierPickerSheet
+        productId={modifierProduct?.id ?? ""}
+        visible={modifierProduct !== null}
+        onClose={() => setModifierProduct(null)}
+        onConfirm={handleModifierConfirm}
       />
 
       {/* Modal wajib mulai shift sebelum penjualan */}

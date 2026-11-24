@@ -1,8 +1,8 @@
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, Trash2 } from "lucide-react-native";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { QtyStepper } from "@/components/pos/QtyStepper";
 import Button from "@/components/ui/Button";
@@ -11,12 +11,13 @@ import { ThemedText } from "@/components/ui/ThemedText";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { colors, motion, radius, spacing } from "@/theme";
+import { applyProductDiscounts } from "@/utils/discount";
 import { formatQty, formatRupiah } from "@/utils/format";
 
 /** Order Review — kasir-order.html */
 export default function OrderReviewScreen() {
   const router = useRouter();
-  const { items, itemCount, subtotal, discountAmount, taxAmount, total, isEmpty, updateQuantity } = useCart();
+  const { items, itemCount, subtotal, productDiscountTotal, discountAmount, taxAmount, total, isEmpty, updateQuantity, removeItem } = useCart();
   const resetCheckout = useCheckoutStore((s) => s.reset);
 
   // Guard: cart kosong → balik ke kasir
@@ -27,6 +28,13 @@ export default function OrderReviewScreen() {
       }
     }, [isEmpty, router]),
   );
+
+  const handleRemoveItem = (item: { id: string; name: string }) => {
+    Alert.alert("Hapus produk", `Hapus "${item.name}" dari pesanan?`, [
+      { text: "Batal", style: "cancel" },
+      { text: "Hapus", style: "destructive", onPress: () => removeItem(item.id) },
+    ]);
+  };
 
   const handleProceed = () => {
     // Reset checkout state dari transaksi sebelumnya, lalu generate order ID baru
@@ -81,15 +89,50 @@ export default function OrderReviewScreen() {
                     ? ` • = ${formatQty(item.baseQty)}`
                     : ""}
                 </ThemedText>
-                <View style={styles.itemFooter}>
-                  <ThemedText variant="sm" weight="bold" color="primary">
-                    {formatRupiah(item.price * item.quantity)}
+                {item.modifiers?.length ? (
+                  <ThemedText variant="micro" color="textSecondary" numberOfLines={2} style={styles.itemSubtitle}>
+                    + {item.modifiers.map((m) => m.optionName).join(", ")}
                   </ThemedText>
+                ) : null}
+                <View style={styles.itemFooter}>
+                  <View style={styles.priceWrap}>
+                    {(() => {
+                      const { finalPrice, totalDiscount } = applyProductDiscounts(item.price, item.discounts);
+                      const modifiersTotal = (item.modifiers ?? []).reduce((sum, m) => sum + (m.price ?? 0), 0) * item.quantity;
+                      const lineTotal = finalPrice * item.quantity + modifiersTotal;
+                      if (totalDiscount <= 0) {
+                        return (
+                          <ThemedText variant="sm" weight="bold" color="primary">
+                            {formatRupiah(lineTotal)}
+                          </ThemedText>
+                        );
+                      }
+                      return (
+                        <>
+                          <ThemedText variant="micro" color="faint" style={styles.priceOriginal}>
+                            {formatRupiah((item.price + (item.modifiers ?? []).reduce((sum, m) => sum + (m.price ?? 0), 0)) * item.quantity)}
+                          </ThemedText>
+                          <ThemedText variant="sm" weight="bold" color="primary">
+                            {formatRupiah(lineTotal)}
+                          </ThemedText>
+                        </>
+                      );
+                    })()}
+                  </View>
                   <QtyStepper
                     value={item.quantity}
                     onDecrement={() => updateQuantity(item.id, item.quantity - 1)}
                     onIncrement={() => updateQuantity(item.id, item.quantity + 1)}
                   />
+                  <Pressable
+                    onPress={() => handleRemoveItem(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Hapus ${item.name} dari pesanan`}
+                    hitSlop={8}
+                    style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+                  >
+                    <Trash2 size={16} color={colors.danger} />
+                  </Pressable>
                 </View>
               </View>
             </View>
@@ -107,6 +150,14 @@ export default function OrderReviewScreen() {
             </ThemedText>
             <ThemedText variant="xs" weight="semiBold" color="ink">
               {formatRupiah(subtotal)}
+            </ThemedText>
+          </View>
+          <View style={styles.summaryRow}>
+            <ThemedText variant="xs" color="muted">
+              Product discount
+            </ThemedText>
+            <ThemedText variant="xs" weight="semiBold" color={productDiscountTotal > 0 ? "dangerText" : "ink"}>
+              {productDiscountTotal > 0 ? `-${formatRupiah(productDiscountTotal)}` : "—"}
             </ThemedText>
           </View>
           <View style={styles.summaryRow}>
@@ -201,6 +252,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  priceWrap: {
+    gap: 2,
+  },
+  priceOriginal: {
+    textDecorationLine: "line-through",
   },
   summaryCard: {
     marginTop: spacing.xs,

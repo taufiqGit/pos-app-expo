@@ -75,7 +75,10 @@ export default function ShiftHistoryScreen() {
   }, []);
 
   useEffect(() => {
-    load().finally(() => setLoading(false));
+    void (async () => {
+      await load();
+      setLoading(false);
+    })();
   }, [load]);
 
   const onRefresh = useCallback(async () => {

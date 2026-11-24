@@ -109,6 +109,7 @@ export default function PaymentScreen() {
         paymentMethod,
         isCash ? tendered : total,
         items,
+        discountAmount,
       );
       const sale = await createSale(payload);
 

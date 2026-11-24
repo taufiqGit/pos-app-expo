@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
 import { ThemedText } from "@/components/ui/ThemedText";
 import { colors, motion, radius, shadows, spacing } from "@/theme";
 import { type Product, resolveUnitPrice } from "@/types";
+import { applyProductDiscounts } from "@/utils/discount";
 import { formatRupiah } from "@/utils/format";
 
 interface ProductCardProps {
@@ -20,7 +21,9 @@ export function ProductCard({ product, onAdd, style }: ProductCardProps) {
   const outOfStock = product.stock !== undefined && product.stock <= 0;
   /** Satuan default (is_default) dipakai sebagai harga utama card; kosong = base unit */
   const defaultUnit = product.productUnits?.find((u) => u.is_default);
-  const displayPrice = resolveUnitPrice(product, defaultUnit);
+  const basePrice = resolveUnitPrice(product, defaultUnit);
+  const { finalPrice, totalDiscount } = applyProductDiscounts(basePrice, product.discounts);
+  const displayPrice = finalPrice;
   const extraUnits = product.productUnits?.length ?? 0;
 
   const handleAdd = () => {
@@ -43,7 +46,13 @@ export function ProductCard({ product, onAdd, style }: ProductCardProps) {
         style,
       ]}
     >
-      {product.discount ? (
+      {totalDiscount > 0 ? (
+        <View style={styles.discountBadge}>
+          <ThemedText variant="micro" weight="bold" color="white">
+            -{formatRupiah(totalDiscount)}
+          </ThemedText>
+        </View>
+      ) : product.discount ? (
         <View style={styles.discountBadge}>
           <ThemedText variant="micro" weight="bold" color="white">
             -{product.discount}%
@@ -89,9 +98,16 @@ export function ProductCard({ product, onAdd, style }: ProductCardProps) {
       ) : null}
 
       <View style={styles.footer}>
-        <ThemedText variant="xs" weight="bold" color="primary" numberOfLines={1} style={styles.price}>
-          {formatRupiah(displayPrice)}
-        </ThemedText>
+        <View style={styles.priceWrap}>
+          {totalDiscount > 0 ? (
+            <ThemedText variant="micro" color="faint" numberOfLines={1} style={styles.priceOriginal}>
+              {formatRupiah(basePrice)}
+            </ThemedText>
+          ) : null}
+          <ThemedText variant="xs" weight="bold" color="primary" numberOfLines={1} style={styles.price}>
+            {formatRupiah(displayPrice)}
+          </ThemedText>
+        </View>
         <Pressable
           onPress={handleAdd}
           disabled={outOfStock}
@@ -169,6 +185,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignSelf: "stretch",
     marginTop: "auto",
+  },
+  priceWrap: {
+    flexShrink: 1,
+    alignItems: "flex-start",
+  },
+  priceOriginal: {
+    textDecorationLine: "line-through",
   },
   price: {
     flexShrink: 1,

@@ -1,3 +1,7 @@
+import type { ProductDiscount } from "../utils/discount";
+
+export type { ProductDiscount };
+
 export type ProductUnit = {
   id: string;
   product_id?: string;
@@ -23,6 +27,8 @@ export type Product = {
   subtitle?: string;
   /** Diskon dalam persen (mis. 30 → badge "-30%") */
   discount?: number;
+  /** Diskon produk dari backend (product_rp / product_pct) */
+  discounts?: ProductDiscount[];
   sku?: string;
   barcode?: string;
   stock?: number;
